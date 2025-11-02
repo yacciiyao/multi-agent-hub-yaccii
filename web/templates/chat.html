@@ -17,7 +17,6 @@
             height: 100%;
         }
 
-        /* ===== 左侧侧边栏 ===== */
         .sidebar {
             width: 260px;
             background: #f9f9f9;
@@ -54,7 +53,6 @@
 
         .session-item.active {
             background: #e8f5e9;
-            /*color: #fff;*/
         }
 
         .session-item:hover {
@@ -98,7 +96,6 @@
             background: #c9302c;
         }
 
-        /* ===== 右侧主区域 ===== */
         .main {
             flex: 1;
             display: flex;
@@ -108,7 +105,7 @@
         }
 
         .app {
-            width: 1000px; /* 固定宽度 */
+            width: 1000px;
             height: 100%;
             background: #fff;
             display: flex;
@@ -128,8 +125,8 @@
             padding: 8px 16px;
             border-bottom: 1px solid #f2f2f2;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
         }
 
         select {
@@ -137,20 +134,19 @@
             border-radius: 4px;
         }
 
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
         .chat {
             flex: 1;
             overflow-y: auto;
             padding: 16px 12px;
             background: #f6f6f6;
-        }
-
-        .chat:empty::before {
-            content: "👋 你好，我是你的 AI 助手，开始聊天吧～";
-            text-align: center;
-            color: #aaa;
-            display: block;
-            margin-top: 80px;
-            font-size: 15px;
         }
 
         .msg-row {
@@ -224,30 +220,69 @@
             opacity: .6;
             cursor: not-allowed;
         }
+
+        .system-banner {
+            text-align: center;
+            color: #aaa;
+            font-size: 13px;
+            margin: 12px 0;
+            font-style: italic;
+        }
+
+        .sources {
+            margin-top: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .sources-toggle {
+            cursor: pointer;
+            color: #007aff;
+            margin-top: 4px;
+            user-select: none;
+        }
+
+        .sources-toggle:hover {
+            text-decoration: underline;
+        }
+
+        .sources-list {
+            background: #f9f9f9;
+            border-left: 3px solid #25a244;
+            padding: 8px 10px;
+            margin-top: 6px;
+            border-radius: 4px;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .source-item {
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
 <div class="layout">
-    <!-- 左侧会话管理栏 -->
     <div class="sidebar">
         <h2>💬 会话列表</h2>
-        <button class="new-session-btn" onclick="newSession()">➕ 新建会话</button>
+        <button class="new-session-btn" onclick="startNewChat()">➕ 新建会话</button>
         <div id="session-list" class="session-list"></div>
         <button id="clear-all-btn" class="clear-all-btn" onclick="clearAllSessions()">🗑️ 清空所有会话</button>
     </div>
 
-    <!-- 右侧主界面 -->
     <div class="main">
         <div class="app">
             <div class="header">Nexa-Hub - AI Chat</div>
-
             <div class="toolbar">
-                模型：
-                <select id="model"></select>
+                <div class="toggle-group">
+                    <span>模型：</span><select id="model"></select>
+                </div>
+                <div class="toggle-group">
+                    <input id="kg-switch" type="checkbox" onchange="toggleKnowledge()"/>
+                    <label for="kg-switch">启用知识库</label>
+                </div>
             </div>
-
             <div id="chat" class="chat"></div>
-
             <div class="composer">
                 <input id="q" type="text" placeholder="请输入问题…"/>
                 <button id="send">发送</button>
@@ -260,156 +295,60 @@
     const API_BASE = "http://127.0.0.1:8000";
     const userId = 1;
     let sessionId = null;
+    let useKG = false;
+    let everUsedKG = false;
 
     const chatEl = document.getElementById("chat");
     const input = document.getElementById("q");
     const sendBtn = document.getElementById("send");
     const modelEl = document.getElementById("model");
+    const kgSwitch = document.getElementById("kg-switch");
     const sessionListEl = document.getElementById("session-list");
-    const clearAllBtn = document.getElementById("clear-all-btn");
 
-    function addMsg({side, text}) {
+    function addMsg({side, text, sources = []}) {
         const row = document.createElement("div");
         row.className = `msg-row ${side}`;
-
         const avatar = document.createElement("img");
         avatar.className = "avatar";
         avatar.src = side === "left"
             ? `${API_BASE}/static/images/avatar/ai.png`
             : `${API_BASE}/static/images/avatar/user.png`;
-
         const bubble = document.createElement("div");
         bubble.className = "bubble";
         bubble.textContent = text;
-
-        if (side === "left") {
-            row.appendChild(avatar);
-            row.appendChild(bubble);
-        } else {
-            row.appendChild(bubble);
-            row.appendChild(avatar);
+        if (side === "left" && sources && sources.length > 0) {
+            const srcBlock = renderSources(sources);
+            if (srcBlock) bubble.appendChild(srcBlock);
         }
-
-        chatEl.appendChild(row);
+        if (side === "left") row.append(avatar, bubble);
+        else row.append(bubble, avatar);
+        chatEl.append(row);
         chatEl.scrollTop = chatEl.scrollHeight;
     }
 
-    async function newSession() {
-        const res = await fetch(`${API_BASE}/api/chat/start`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({user_id: userId})
-        });
-
-        const data = await res.json();
-        if (!data.ok) {
-            console.error("新建会话失败:", data.error);
-            return;
-        }
-
-        sessionId = data.session_id;
-        localStorage.setItem('nexa_session_id', sessionId);
-
-        // 清空聊天记录
-        chatEl.innerHTML = '';
-
-        // 添加欢迎消息
-        addMsg({side: 'left', text: '👋 你好，我是你的 AI 助手，开始聊天吧～'});
-
-        // 刷新左侧会话列表
-        await loadSessions();
-    }
-
-
-    async function loadSessions() {
-        const res = await fetch(`${API_BASE}/api/chat/sessions?user_id=${userId}`);
-        const payload = await res.json();
-        const sessions = (payload.data && payload.data.sessions) ? payload.data.sessions : [];
-
-        sessionListEl.innerHTML = "";
-        clearAllBtn.style.display = sessions.length > 0 ? "block" : "none";
-
-        sessions.forEach(s => {
-            const sid = s.session_id;
-            const name = s.name || sid.slice(0, 8);
-            const item = document.createElement("div");
-            item.className = "session-item" + (sid === sessionId ? " active" : "");
-            item.textContent = name;
-
-            const delBtn = document.createElement("button");
-            delBtn.className = "delete-btn";
-            delBtn.textContent = "🗑️";
-            delBtn.onclick = async (e) => {
-                e.stopPropagation();
-                await clearSession(sid);
-            };
-
-            item.appendChild(delBtn);
-            item.onclick = () => switchSession(sid);
-            sessionListEl.appendChild(item);
-        });
-    }
-
-    async function switchSession(sid) {
-        sessionId = sid;
-        localStorage.setItem('nexa_session_id', sessionId);
-
-        // 更新会话列表高亮
-        const items = document.querySelectorAll('.session-item');
-        items.forEach(el => el.classList.toggle('active', el.textContent.includes(sid.slice(0, 8))));
-
-        // 清空当前聊天内容
-        chatEl.innerHTML = '';
-
-        // 从后端加载历史记录
-        const res = await fetch(`${API_BASE}/api/chat/history?user_id=${userId}&session_id=${sid}`);
-        const payload = await res.json();
-
-        const messages = payload.data?.messages || [];
-
-        // 回显历史消息
-        for (const msg of messages) {
-            addMsg({
-                side: msg.role === 'user' ? 'right' : 'left',
-                text: msg.content
-            });
-        }
-
-        // 滚动到底部
+    function addSystemBanner(text) {
+        const div = document.createElement("div");
+        div.className = "system-banner";
+        div.textContent = text;
+        chatEl.append(div);
         chatEl.scrollTop = chatEl.scrollHeight;
     }
 
-    async function clearSession(sid) {
-        await fetch(`${API_BASE}/api/chat/clear`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({user_id: userId, session_id: sid})
-        });
-        if (sessionId === sid) chatEl.innerHTML = "";
-        await loadSessions();
-    }
-
-    async function clearAllSessions() {
-        const res = await fetch(`${API_BASE}/api/chat/sessions?user_id=${userId}`);
-        const payload = await res.json();
-        const sessions = (payload.data && payload.data.sessions) ? payload.data.sessions : [];
-        for (const s of sessions) {
-            await fetch(`${API_BASE}/api/chat/clear`, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({user_id: userId, session_id: s.session_id})
-            });
-        }
+    async function startNewChat() {
         sessionId = null;
         chatEl.innerHTML = "";
-        await loadSessions();
+
+        useKG = false;
+        everUsedKG = false;
+        kgSwitch.checked = false;
+
+        addSystemBanner("👋 新会话已开启");
+        highlightActiveSession(null);
     }
 
     async function send() {
         const text = input.value.trim();
         if (!text) return;
-        if (!sessionId) await newSession();
-
         addMsg({side: "right", text});
         input.value = "";
         sendBtn.disabled = true;
@@ -422,59 +361,153 @@
                     query: text,
                     model: modelEl.value,
                     user_id: userId,
-                    session_id: sessionId
+                    session_id: sessionId,
+                    use_kg: useKG,
                 })
             });
             const payload = await res.json();
-
             if (!payload.ok) {
                 addMsg({side: "left", text: `❌ 出错: ${payload.error || "未知错误"}`});
-            } else if (payload.data) {
-                const aiText = payload.data.text || "[无响应]";
-                addMsg({side: "left", text: aiText});
-                sessionId = payload.data.session_id || sessionId;
-                localStorage.setItem("nexa_session_id", sessionId);
+            } else {
+                const data = payload.data;
+                const aiText = data.text || "[无响应]";
+                addMsg({side: "left", text: aiText, sources: data.sources || []});
+                sessionId = data.session_id || sessionId;
                 await loadSessions();
+                highlightActiveSession(sessionId);
             }
         } catch (err) {
-            addMsg({side: "left", text: "⚠️ 请求失败，请检查服务器或网络"});
+            addMsg({side: "left", text: "⚠️ 请求失败，请联系管理员"});
         } finally {
             sendBtn.disabled = false;
         }
     }
 
-    // 加载模型列表
-    async function loadModels() {
-        try {
-            const res = await fetch(`${API_BASE}/api/model/`);
-            const payload = await res.json();
-            const models = payload.data?.models || [];
-            const select = document.getElementById("model");
-            select.innerHTML = "";
-            models.forEach(m => {
-                const val = typeof m === "string" ? m : m.id;
-                const label = typeof m === "string" ? m : (m.name || m.id);
-                const opt = document.createElement("option");
-                opt.value = val;
-                opt.textContent = label;
-                select.appendChild(opt);
-            });
-        } catch (err) {
-            console.error("模型列表加载失败:", err);
+    function toggleKnowledge() {
+        const prev = useKG;
+        useKG = kgSwitch.checked;
+        if (useKG && !prev) {
+            everUsedKG = true;
+            addSystemBanner("🧠 用户开启知识库查询功能");
+        } else if (!useKG && prev) {
+            addSystemBanner("💬 用户关闭知识库查询功能");
         }
     }
 
-    sendBtn.addEventListener("click", send);
-    input.addEventListener("keydown", (e) => {
+    function renderSources(sources) {
+        if (!sources || sources.length === 0) return null;
+        const container = document.createElement("div");
+        container.className = "sources";
+        const toggle = document.createElement("div");
+        toggle.className = "sources-toggle";
+        toggle.textContent = `🧾 查看引用来源 (${sources.length})`;
+        const details = document.createElement("div");
+        details.className = "sources-list";
+        details.style.display = "none";
+        sources.forEach((src, i) => {
+            const item = document.createElement("div");
+            item.className = "source-item";
+            const name = src.source ? src.source.split(/[\\/]/).pop() : "(未知来源)";
+            item.innerHTML = `<strong>${i + 1}. ${name}</strong><br>${src.snippet || ""}`;
+            details.appendChild(item);
+        });
+        toggle.onclick = () => {
+            details.style.display = details.style.display === "none" ? "block" : "none";
+            toggle.textContent = details.style.display === "none"
+                ? `🧾 查看引用来源 (${sources.length})` : "📄 收起引用来源";
+        };
+        container.appendChild(toggle);
+        container.appendChild(details);
+        return container;
+    }
+
+    async function loadSessions() {
+        const res = await fetch(`${API_BASE}/api/chat/sessions?user_id=${userId}`);
+        const payload = await res.json();
+        const sessions = payload.data?.sessions || [];
+        sessionListEl.innerHTML = "";
+
+        sessions.forEach(sess => {
+            const div = document.createElement("div");
+            div.className = "session-item";
+            div.dataset.id = sess.session_id;
+            div.onclick = () => loadHistory(sess.session_id);
+
+            const name = document.createElement("span");
+            name.textContent = sess.session_name || "(未命名)";
+
+            const del = document.createElement("button");
+            del.className = "delete-btn";
+            del.textContent = "🗑️";
+            del.onclick = async (e) => {
+                e.stopPropagation();
+                await fetch(`${API_BASE}/api/chat/clear`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({user_id: userId, session_id: sess.session_id})
+                });
+                await loadSessions();
+            };
+
+            div.append(name, del);
+            sessionListEl.append(div);
+        });
+
+        const clearAllBtn = document.getElementById("clear-all-btn");
+        if (sessions.length > 0) {
+            clearAllBtn.style.display = "block";
+        } else {
+            clearAllBtn.style.display = "none";
+        }
+    }
+
+
+    function highlightActiveSession(id) {
+        [...document.querySelectorAll(".session-item")].forEach(el => {
+            el.classList.toggle("active", el.dataset.id === id);
+        });
+    }
+
+    async function loadHistory(id) {
+        sessionId = id;
+        const res = await fetch(`${API_BASE}/api/chat/history?user_id=${userId}&session_id=${id}`);
+        const payload = await res.json();
+        const msgs = payload.data?.messages || [];
+        chatEl.innerHTML = "";
+        msgs.forEach(m => addMsg({side: m.role === "user" ? "right" : "left", text: m.content}));
+        highlightActiveSession(id);
+    }
+
+    async function clearAllSessions() {
+        await fetch(`${API_BASE}/api/chat/clear_all?user_id=${userId}`, {method: "POST"});
+        sessionListEl.innerHTML = "";
+        chatEl.innerHTML = "";
+        sessionId = null;
+        addSystemBanner("🧹 所有会话已清空");
+    }
+
+    async function loadModels() {
+        const res = await fetch(`${API_BASE}/api/model/`);
+        const payload = await res.json();
+        const models = payload.data?.models || [];
+        models.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m.id || m.name;
+            opt.textContent = `${m.family ? m.family + ": " : ""}${m.name}`;
+            modelEl.append(opt);
+        });
+    }
+
+    sendBtn.onclick = send;
+    input.addEventListener("keydown", e => {
         if (e.key === "Enter") send();
     });
 
-    window.addEventListener("load", async () => {
+    window.onload = async () => {
         await loadModels();
-        sessionId = localStorage.getItem("nexa_session_id");
-        if (!sessionId) await newSession();
-        else await loadSessions();
-    });
+        await loadSessions();
+        addSystemBanner("👋 你好，我是你的 AI 助手，现在开始聊天吧～");
+    };
 </script>
 </body>
 </html>

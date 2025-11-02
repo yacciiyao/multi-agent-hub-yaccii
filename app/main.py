@@ -19,9 +19,6 @@ from infrastructure.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """ 生命周期管理: 启动与关闭事件 """
-
-    # 启动阶段
     config.load()
     logger.info("Nexa-Hub 服务启动...")
 
@@ -29,10 +26,9 @@ async def lifespan(app: FastAPI):
 
     logger.info("Nexa-Hub 服务关闭...")
 
-def create_app() -> FastAPI:
-    """ 创建并初始化 Nexa-Hub 应用 """
 
-    app = FastAPI(title="Nexa-Hub", version="1.1.0", lifespan=lifespan,)
+def create_app() -> FastAPI:
+    app = FastAPI(title="Nexa-Hub", version="1.1.0", lifespan=lifespan, )
 
     origins = [
         "http://localhost",
@@ -67,5 +63,6 @@ def create_app() -> FastAPI:
         })
 
     return app
+
 
 app = create_app()

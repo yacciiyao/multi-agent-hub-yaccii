@@ -4,7 +4,7 @@
 @Date: 2025-10-29 14:52
 @Desc:
 """
-from typing import Optional
+from typing import Optional, List, Dict
 
 from pydantic import BaseModel
 
@@ -14,5 +14,7 @@ class Reply(BaseModel):
     user_id: int
     session_id: str
     session_name: Optional[str] = None
-    model: str
+    model_name: str
     text: str
+    sources: Optional[List[Dict[str, str]]] = []
+    metadata: Optional[Dict[str, Optional[str]]] = None

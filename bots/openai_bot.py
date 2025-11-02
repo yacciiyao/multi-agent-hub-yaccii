@@ -17,11 +17,10 @@ class OpenAIBot(BaseBot):
     """ OpenAI 聊天模型, 通过 model_name 区分不同模型 """
 
     family = "openai"
-    display_name = "OpenAI Chat Models"
     models_info = {
-        "openai:gpt-3.5-turbo": {"name": "GPT-3.5 Turbo", "desc": "经典稳定版，适合常规任务"},
-        "openai:gpt-4o-mini": {"name": "GPT-4o Mini", "desc": "轻量快速版 GPT-4"},
-        "openai:gpt-4o": {"name": "GPT-4o", "desc": "旗舰多模态模型"},
+        "gpt-3.5-turbo": {"desc": "经典稳定版，适合常规任务"},
+        "gpt-4o-mini": {"desc": "轻量快速版 GPT-4"},
+        "gpt-4o": {"desc": "旗舰多模态模型"},
     }
 
     def __init__(self, model_name: Optional[str] = None):
@@ -37,12 +36,12 @@ class OpenAIBot(BaseBot):
         self.client = OpenAI(api_key=api_key, base_url=base_url)
 
     def reply(self, query: str, context=None):
+
         return self.reply_with_context([{"role": "user", "content": query}])
 
     def reply_with_context(self, messages: List[Dict[str, str]]) -> str:
-
         try:
-            logger.info(f"[OpenAIBot] model={self.model_name}, {messages}={len(messages)}")
+            logger.info(f"[OpenAIBot] model_name={self.model_name}, {messages}={len(messages)}")
 
             response = self.client.chat.completions.create(
                 model=self.model_name,
@@ -55,5 +54,5 @@ class OpenAIBot(BaseBot):
 
         except Exception as e:
             logger.error(f"[OpenAIBot] 调用失败: {e}")
-            return f"模型调用出错: {e}"
 
+            return f"模型调用出错: {e}"

@@ -16,9 +16,9 @@ class ConfigManager:
         self.config_path = Path(config_path)
         self._config = {}
 
-
     def load(self):
         """ 从文件和环境中加载配置 """
+
         if self.config_path.exists():
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 self._config = json.load(f)
@@ -34,18 +34,23 @@ class ConfigManager:
 
     def get(self, key: str, default=None):
         """ 获取配置值 """
+
         return self._config.get(key, default)
 
     def set(self, key: str, value):
         """ 设置配置值 """
+
         self._config[key] = value
 
     def as_dict(self):
         return self._config
 
+
 # 全局配置实例
 config = ConfigManager()
 
+
 def conf():
     """ 统一访问配置 """
+
     return config

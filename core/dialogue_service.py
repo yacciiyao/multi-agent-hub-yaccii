@@ -2,12 +2,13 @@
 """
 @Author: yaccii
 @Date: 2025-10-29 20:12
-@Desc:
+@Desc: 会话与消息管理服务（内存实现版）
 """
 import time
-import uuid
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
+from core.message import Message
+from core.session import Session
 from infrastructure.logger import logger
 
 
@@ -15,88 +16,130 @@ class DialogueService:
     """ 管理多轮对话的上下文缓存 """
 
     def __init__(self):
-        self.user_sessions: Dict[int, Dict[str, Dict]] = {}
+        self.user_sessions: Dict[int, Dict[str, Session]] = {}
 
     def _ensure_user(self, user_id):
         if user_id not in self.user_sessions:
             self.user_sessions[user_id] = {}
 
-    def ensure_session_exists(self, user_id: int, session_id: str, default_name: str = "New Chat"):
+    def _require_session(self, user_id: int, session_id: str) -> Session:
         self._ensure_user(user_id)
+
         if session_id not in self.user_sessions[user_id]:
-            self.user_sessions[user_id][session_id] = {
-                "name": default_name,
-                "messages": [],
-                "created_at": int(time.time())
-            }
+            raise KeyError(f"Session not found: user={user_id}, session={session_id}")
 
-    def new_session(self, user_id: int, session_name: str = "New Chat") -> str:
-        self._ensure_user(user_id)
-        session_id = str(uuid.uuid4())
-
-        self.user_sessions[user_id][session_id] = {"name": session_name, "messages": [], "created_at": int(time.time())}
-
-        return session_id
-
-    def list_sessions(self, user_id: int) -> List[Dict[str, str]]:
-        self._ensure_user(user_id)
-        sessions = self.user_sessions[user_id]
-
-        result = [
-            {
-                "session_id": s_id,
-                "name": s["name"],
-                "created_at": s["created_at"],
-            }
-            for s_id, s in sessions.items()
-        ]
-
-        result.sort(key=lambda x: x["created_at"], reverse=True)
-
-        return result
-
-    def get_session(self, user_id: int, session_id: str) -> Optional[Dict]:
-        self._ensure_user(user_id)
         return self.user_sessions[user_id][session_id]
 
-    def get_session_name(self, user_id: int, session_id: str) -> Optional[str]:
-        s = self.get_session(user_id, session_id)
-        return s["name"] if s else None
+    def new_session(self,
+                    user_id: int,
+                    session_name: str = None,
+                    model_name: str = "gpt-3.5-turbo",
+                    use_kg: bool = False,
+                    namespace: str = "default",
+                    agent_name: Optional[str] = None) -> str:
+        """ 创建新会话 """
 
-    def rename_session(self, user_id: int, session_id: str, new_name: str) -> None:
         self._ensure_user(user_id)
-        if session_id in self.user_sessions[user_id]:
-            self.user_sessions[user_id][session_id]["name"] = new_name
-            logger.info(f"[Dialogue] Cleared session {session_id} for user {user_id}")
+        mode = "agent" if agent_name else ("knowledge" if use_kg else "chat")
+
+        session = Session(
+            session_name=session_name,
+            model_name=model_name,
+            mode=mode,
+            use_kg=use_kg,
+            namespace=namespace,
+            agent_name=agent_name,
+        )
+
+        self.user_sessions[user_id][session.session_id] = session
+
+        logger.info(
+            f"[Dialogue] New session user={user_id}, session={session.session_id}, model={model_name}, use_kg={use_kg}")
+
+        return session.session_id
+
+    def get_session(self, user_id: int, session_id: str) -> Session:
+        return self._require_session(user_id, session_id)
+
+    def list_sessions(self, user_id: int) -> List[Dict[str, Any]]:
+        self._ensure_user(user_id)
+        sessions = [
+            s for s in self.user_sessions[user_id].values()
+            if s.messages  # 过滤空会话
+        ]
+
+        sessions.sort(key=lambda x: x.updated_at, reverse=True)
+
+        return [s.light_view() for s in sessions]
+
+    def rename_session(self, user_id: int, session_id: str, session_name: str) -> None:
+        session = self._require_session(user_id, session_id)
+        session.session_name = session_name
+        session.updated_at = time.time()
+        logger.info(f"[Dialogue] Renamed session {session_id} -> {session_name}")
+
+    def update_session_config(
+            self,
+            user_id: int,
+            session_id: str,
+            *,
+            use_kg: Optional[bool] = None,
+            namespace: Optional[str] = None,  # 默认"default"
+            agent_name: Optional[str] = None) -> Session:
+
+        session = self._require_session(user_id, session_id)
+
+        if use_kg is not None:
+            prev = session.use_kg
+            session.use_kg = use_kg
+            logger.info(f"[Dialogue] user={user_id} session={session_id} use_kg {prev} -> {use_kg}")
+
+        if namespace is not None:
+            session.namespace = namespace
+        if agent_name is not None:
+            session.agent_name = agent_name
+
+        if session.agent_name:
+            session.mode = "agent"
+        else:
+            session.mode = "knowledge" if session.use_kg else "chat"
+
+        logger.info(
+            f"[Dialogue] Update config user={user_id} session={session_id} use_kg={session.use_kg} mode={session.mode} ns={session.namespace} agent={session.agent_name}"
+        )
+
+        return session
 
     def clear_session(self, user_id: int, session_id: str) -> None:
+        """删除单个会话"""
+
         self._ensure_user(user_id)
         if session_id in self.user_sessions[user_id]:
             del self.user_sessions[user_id][session_id]
             logger.info(f"[Dialogue] Cleared session {session_id} for user {user_id}")
 
-    def clear_sessions(self, user_id: int) -> None:
+    def clear_all_sessions(self, user_id: int) -> None:
+        """清空用户所有会话"""
+
         self._ensure_user(user_id)
-        if user_id in self.user_sessions:
-            del self.user_sessions[user_id]
-            logger.info(f"[Dialogue] Cleared all sessions for user {user_id}")
+        count = len(self.user_sessions[user_id])
+        self.user_sessions[user_id].clear()
+        logger.info(f"[Dialogue] Cleared {count} sessions for user {user_id}")
 
-    def append_message(self, user_id: int, session_id: str, role: str, content: str) -> None:
+    def append_message(self, user_id: int, session_id: str, message: Message) -> None:
         self._ensure_user(user_id)
-        session = self.user_sessions[user_id].get(session_id)
-        if not session:
-            logger.warning(f"[Dialogue] session not found user={user_id}, id={session_id}, auto-create.")
-            self.ensure_session_exists(user_id, session_id)
+        session = self._require_session(user_id, session_id)
+        session.append(message)
 
-        self.user_sessions[user_id][session_id]["messages"].append({"role": role, "content": content})
+        logger.info(f"[Dialogue] +msg user={user_id} session={session_id} role={message.role} mode={message.mode}")
 
-    def get_context(self, user_id: int, session_id: str) -> List[Dict[str, str]]:
-        self._ensure_user(user_id)
-        session = self.user_sessions[user_id].get(session_id)
-        if not session:
-            return []
+    def get_messages(self, user_id: int, session_id: str, *, as_chat_format: bool = True) -> List[Any]:
+        session = self._require_session(user_id, session_id)
 
-        return session["messages"]
+        if as_chat_format:  # 兼容 OpenAI 格式
+            return [{"role": m.role, "content": m.content} for m in session.messages]
 
-# 单例实例
+        return list(session.messages)
+
+
 dialog_service = DialogueService()

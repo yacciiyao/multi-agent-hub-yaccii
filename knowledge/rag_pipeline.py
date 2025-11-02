@@ -4,12 +4,12 @@
 @Date: 2025-10-29 14:53
 @Desc:
 """
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from langchain_classic.chains.retrieval_qa.base import RetrievalQA
-from langchain_community.chat_models import ChatOpenAI
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
 
 from infrastructure.config_manager import conf
 from infrastructure.logger import logger
@@ -25,7 +25,6 @@ class RagPipeline:
     def __init__(self):
         cfg = conf().get("rag", {})
         self.default_namespace = cfg.get("default_namespace", "default")
-        self.available_namespaces = cfg.get("available_namespaces", [])
         self.top_k = cfg.get("top_k", 5)
 
     def index_file(self, file_path: str, namespace: Optional[str] = None) -> int:
@@ -34,39 +33,35 @@ class RagPipeline:
         docs = load_documents(file_path)
         splitter = get_text_splitter()
         chunks = splitter.split_documents(docs)
-        embedding = get_embedding()
 
-        # 载入已有库或新建
+        embedding = get_embedding()
         vs = vectorstore.load(ns, embedding)
         if vs is None:
             vs = FAISS.from_documents(chunks, embedding)
-
         else:
             vs.add_documents(chunks)
 
         vectorstore.save(vs, ns)
 
         logger.info(f"[RAG] indexed {len(chunks)} documents into namespace {ns}")
+
         return len(chunks)
 
-    def query(self, question: str, namespace: Optional[str] = None, model: Optional[str] = None,
-              top_k: Optional[int] = None) -> str:
+    def query(self, question: str, namespace: Optional[str] = None, model_name: Optional[str] = None,
+              top_k: Optional[int] = None) -> Dict[str, Any]:
         ns = namespace or self.default_namespace
         k = top_k or self.top_k
 
         embedding = get_embedding()
 
-        if self.available_namespaces and ns not in self.available_namespaces:
-            return f"知识库 `{ns}` 未授权访问"
-
         vs = vectorstore.load(ns, embedding)
         if vs is None:
-            return f"知识库 `{ns}` 不存在, 请联系管理员先上传文档"
+            return {"answer": f"知识库 `{ns}` 不存在。", "sources": []}
 
         retriever = vs.as_retriever(search_kwargs={"k": k})
 
         # 可以从 ModelRegistry 动态获取模型, 这里先用 OpenAI
-        llm_model = model or conf().get("default_model", "gpt-3.5-turbo")
+        llm_model = model_name or conf().get("default_model", "gpt-3.5-turbo")
 
         api_key = conf().get("openai_api_key")
         base_url = conf().get("openai_base_url")
@@ -90,9 +85,20 @@ class RagPipeline:
             chain_type_kwargs={"prompt": prompt},
         )
 
-        answer = qa.run(query=question)
+        result = qa.invoke({"query": question})
+        answer = result.get("result") if isinstance(result, dict) else str(result)
 
-        return answer
+        docs = retriever.invoke(question)
+
+        sources = [
+            {
+                "source": getattr(d, "metadata", {}).get("source", ""),
+                "snippet": getattr(d, "page_content", "")[:200],
+            }
+            for d in (docs or [])
+        ]
+
+        return {"answer": answer, "sources": sources}
 
 
 rag = RagPipeline()

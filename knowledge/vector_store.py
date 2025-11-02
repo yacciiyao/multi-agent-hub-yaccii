@@ -4,8 +4,9 @@
 @Date: 2025-10-29 14:53
 @Desc:
 """
+import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 from langchain_community.vectorstores import FAISS
 
@@ -22,6 +23,7 @@ class VectorStoreManager:
         self.store_dir.mkdir(parents=True, exist_ok=True)
 
     def _ns_path(self, namespace: str) -> Path:
+
         return self.store_dir / namespace
 
     def save(self, vs: FAISS, namespace: str):
@@ -40,12 +42,34 @@ class VectorStoreManager:
         try:
             vs = FAISS.load_local(str(ns_path), embeddings=embeddings, allow_dangerous_deserialization=True)
             logger.info(f"[VectorStore] Loaded {ns_path}")
+
             return vs
 
         except Exception as e:
             logger.error(f"[VectorStore] Failed to load {ns_path}, {e}")
 
             return None
+
+    def list_namespaces(self) -> List[str]:
+
+        return [p.name for p in self.store_dir.iterdir()]
+
+    def delete_namespaces(self, namespace: str):
+        ns_path = self._ns_path(namespace)
+        if ns_path.exists():
+            shutil.rmtree(ns_path)
+            logger.info(f"[VectorStore] Deleted {ns_path}")
+
+    def count(self, namespace: str) -> int:
+        ns_path = self._ns_path(namespace)
+        if not ns_path.exists():
+            return 0
+
+        return sum(1 for _ in ns_path.glob("*.faiss"))
+
+    def exists(self, namespace: str) -> bool:
+
+        return self._ns_path(namespace).exists()
 
 
 vectorstore = VectorStoreManager()

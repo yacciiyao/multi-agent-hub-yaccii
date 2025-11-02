@@ -6,13 +6,24 @@
 """
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Query
 from pydantic import BaseModel
 
 from infrastructure.logger import logger
 from knowledge.rag_pipeline import rag
+from knowledge.vector_store import vectorstore
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
+
+UPLOAD_DIR = Path("./data/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+class KnowledgeQuery(BaseModel):
+    question: str
+    namespace: str | None = None
+    top_k: int | None = None
+    model: str | None = None
 
 
 @router.post("/upload")
@@ -26,10 +37,7 @@ async def upload_and_index(file: UploadFile = File(...), namespace: str = Form(N
 
     ns = namespace or conf().get("rag", {}).get("default_namespace", "default")
 
-    # 保存临时文件
-    tmp_dir = Path(f"./data/uploads/{file.filename}")
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    tmp_path = tmp_dir / f"{file.filename}"
+    tmp_path = UPLOAD_DIR / file.filename
     with tmp_path.open("wb") as f:
         f.write(await file.read())
 
@@ -50,23 +58,44 @@ async def upload_and_index(file: UploadFile = File(...), namespace: str = Form(N
             pass
 
 
-class KnowledgeQuery(BaseModel):
-    question: str
-    namespace: str | None = None
-    top_k: int | None = None
-    model: str | None = None
-
-
 @router.post("/query")
 async def query_knowledge(query: KnowledgeQuery):
+    """ 查询知识库 """
+
     if not query.question:
         return {"ok": False, "error": "缺少 question 参数"}
+
     try:
         answer = rag.query(question=query.question, namespace=query.namespace, model_name=query.model,
                            top_k=query.top_k)
 
-        return {"ok": True, "data": {"answer": answer, "namespace": query.namespace}, "error": None}
+        return {"ok": True, "data": answer, "error": None}
 
     except Exception as e:
         logger.error(f"[Knowledge] query error: {e}")
+
+        return {"ok": False, "error": str(e)}
+
+
+@router.get("/list")
+async def list_namespaces():
+    """列出所有知识库"""
+
+    namespaces = vectorstore.list_namespaces()
+    counts = {ns: vectorstore.count(ns) for ns in namespaces}
+
+    return {"ok": True, "data": {"namespaces": namespaces, "counts": counts}, "error": None}
+
+
+@router.delete("/namespace")
+async def delete_namespace(namespace: str = Query(...)):
+    """删除知识库（危险操作）"""
+
+    try:
+        vectorstore.delete_namespace(namespace)
+
+        return {"ok": True, "data": {"namespace": namespace}, "error": None}
+
+    except Exception as e:
+
         return {"ok": False, "error": str(e)}

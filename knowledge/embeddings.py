@@ -10,15 +10,17 @@ from infrastructure.config_manager import conf
 from infrastructure.logger import logger
 
 try:
-    from langchain_community.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
-
-    HAS_SBERT = True
-
-except:
-    HAS_SBERT = False
+    from langchain_openai import OpenAIEmbeddings
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+except ImportError as e:
+    raise ImportError(
+        "缺少必要依赖，请执行: pip install -U langchain-openai langchain-community"
+    ) from e
 
 
 def get_embedding() -> Any:
+    """根据配置返回 Embedding 模型"""
+
     rag_cfg = conf().get("rag", {})
     provider = rag_cfg.get("embedding", {}).get("provider", "openai")
     model_name = rag_cfg.get("embedding", {}).get("model", "text-embedding-3-small")
@@ -27,18 +29,15 @@ def get_embedding() -> Any:
         api_key = conf().get("openai_api_key")
         base_url = conf().get("openai_base_url")
 
-        logger.info(f"[Embeddings] provider={provider} model={model_name}")
+        logger.info(f"[Embeddings] provider={provider} model_name={model_name}")
 
         return OpenAIEmbeddings(api_key=api_key, base_url=base_url, model=model_name)
 
     elif provider == "sbert":
 
-        logger.info(f"[Embeddings] provider={provider} model={model_name}")
+        logger.info(f"[Embeddings] provider={provider} model_name={model_name}")
 
-        if not HAS_SBERT:
-            raise RuntimeError(f"未安装 sentence-transformers，请安装依赖或使用其他模型。")
-        else:
-            return HuggingFaceEmbeddings(model_name=model_name)
+        return HuggingFaceEmbeddings(model_name=model_name)
 
     else:
-        raise ValueError(f"[Embeddings] provider={provider} model={model_name}")
+        raise ValueError(f"[Embeddings] provider={provider} model_name={model_name}")

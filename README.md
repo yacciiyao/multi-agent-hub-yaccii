@@ -20,47 +20,74 @@
 
 ```
 nexa-hub/
-├── app/
-│   ├── main.py                 # FastAPI 主入口
-│   ├── routers/
-│   │   ├── chat_api.py         # 聊天接口
-│   │   └── knowledge_api.py    # 知识检索接口
-│   └── core/                   # 通用配置模块
+├── app/                    # FastAPI 路由入口
+│   ├── main.py
+│   └── routers/
+│       ├── chat_api.py
+│       ├── knowledge_api.py
+│       └── model_api.py
 │
-├── bots/
-│   ├── base_bot.py             # 抽象基类
-│   ├── openai_bot.py           # OpenAI Bot
-│   ├── qwen_bot.py             # 通义千问 Bot
-│   ├── gemini_bot.py           # Gemini Bot
-│   └── model_registry.py       # 模型注册中心
+├── core/                   # 核心逻辑模块
+│   ├── bridge_manager.py   # 统一消息调度
+│   ├── dialogue_service.py # 会话与上下文管理
+│   ├── message.py          # 消息对象定义
+│   ├── model_registry.py   # 模型注册与加载
+│   ├── rag_engine.py       # 知识检索与问答（RAG 入口）
+│   ├── session.py          # 会话数据结构
+│   └── reply.py            # 统一响应对象
 │
-├── knowledge/
-│   ├── rag_pipeline.py         # 检索增强问答核心逻辑
-│   ├── embeddings.py           # 向量化模型封装
-│   ├── vectorstore.py          # 向量库存取与加载
+├── bots/                   # 各大模型封装
+│   ├── base_bot.py
+│   ├── openai_bot.py
+│   ├── qwen_bot.py
+│   ├── claude_bot.py
+│   └── gemini_bot.py
 │
-├── web/
-│   └── templates/
-│       └── chat.html           # 前端聊天界面
+├── knowledge/              # 本地知识库与索引管理
+│   ├── embeddings.py
+│   ├── rag_pipeline.py
+│   ├── vector_store.py
+│   ├── loader.py
+│   └── splitter.py
 │
-├── data/
-│   ├── uploads/                # 上传文件临时目录
-│   └── vector_stores/          # 向量化知识库
+├── infrastructure/         # 基础设施层
+│   ├── config_manager.py   # 配置加载
+│   ├── logger.py           # 日志封装
+│   └── utils.py            # 通用工具
 │
-├── config.json                 # 全局配置
-└── README.md                   # 项目说明
+├── web/                    # 前端静态页面
+│   ├── templates/
+│   │   └── chat.html       # 主聊天界面
+│   └── static/
+│       └── images/avatars/ # 头像等资源
+│
+├── data/                   # 用户上传文件与向量存储
+│   ├── uploads/
+│   └── vector_stores/
+│
+├── requirements.txt        # 项目依赖
+├── config.json             # 配置文件
+└── README.md               # 当前文档
 ```
 
 ---
 
 ## ⚙️ 安装与运行
 
-### 1️⃣ 安装依赖
+### 1️⃣ 克隆项目
+
+```bash
+git clone https://github.com/yourname/nexa-hub.git
+cd nexa-hub
+```
+
+### 2️⃣ 安装依赖
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2️⃣ 配置项目参数
+### 3️⃣ 配置项目参数
 请将项目根目录下的 `config_template.json` 复制为 `config.json`：
 
 ```bash
@@ -73,14 +100,14 @@ cp config_template.json config.json
 {
   "openai_api_key": "sk-xxxx",
   "openai_base_url": "https://api.openai.com/v1",
-  "default_model": "openai:gpt-3.5",
-  "allowed_models": ["openai:gpt-3.5", "qwen:turbo", "gemini:1.5"]
+  "default_model": "gpt-3.5-turbo",
+  "allowed_models": []
 }
 ```
 
-> 如使用其他模型（如 Qwen、Gemini），在此文件中添加相应的配置项。
 
-### 3️⃣ 启动后端服务
+### 4️⃣ 启动服务
+#### 4.1️⃣ 启动后端服务
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
@@ -93,7 +120,7 @@ http://127.0.0.1:8000/api/knowledge/query
 
 ---
 
-## 💡 前端运行
+#### 4.2️⃣ 启动前端服务
 
 在 `web/templates` 目录下运行：
 
@@ -107,149 +134,37 @@ python -m http.server 7979
 http://127.0.0.1:7979/chat.html
 ```
 
-> 💬 聊天页面为微信风格布局，用户消息在右侧，AI 回复在左侧。
 
 ---
 
-## 🧠 API 使用说明
+## 🧩 示例截图（可后续补充）
 
-### 1. 聊天接口
-
-**POST** `/api/chat/`
-
-**请求示例：**
-```json
-{
-  "query": "你好，介绍一下你自己",
-  "model": "openai:gpt-3.5",
-  "session_id": "test-session"
-}
-```
-
-**响应示例：**
-```json
-{
-  "text": "你好，我是 Nexa-Hub 智能助手！",
-  "model": "openai:gpt-3.5",
-  "session_id": "test-session"
-}
-```
-
----
-
-### 2. 文件上传接口
-
-**POST** `/api/knowledge/upload`
-
-表单参数（form-data）：
-
-| 参数 | 说明 |
+| 页面 | 截图 |
 |------|------|
-| file | 上传的文档文件（支持 PDF / TXT / DOCX） |
-| namespace | 知识库命名空间（可选，默认 default） |
+| 聊天界面 | ![chat](docs/images/chat_demo.jpg) |
+| 知识库上传 | ![upload](docs/images/upload_demo.jpg) |
 
 ---
 
-### 3. 知识问答接口（RAG）
+## 🧠 技术亮点
 
-**POST** `/api/knowledge/query`
-
-**请求示例：**
-```json
-{
-  "question": "什么是模型微调？",
-  "namespace": "test",
-  "top_k": 3,
-  "model": "openai:gpt-3.5"
-}
-```
-
-**响应示例：**
-```json
-{
-  "answer": "模型微调是指在预训练模型基础上对特定任务进行再训练的过程。",
-  "namespace": "test"
-}
-```
+- 🔌 **多模型统一注册与切换**：支持 `OpenAI`、`Qwen`、`Gemini`、`Claude` 等模型接入；
+- 📚 **RAG（Retrieval-Augmented Generation）**：结合 FAISS 向量索引，实现企业文档问答；
+- 💾 **Session 持久化设计**：多轮上下文记忆、自动会话命名；
+- 🧱 **模块化架构**：前后端分离、层次清晰、方便扩展；
+- 🧩 **可扩展 Agent 架构**：为未来接入 LangChain、语音、图像等 Agent 做好预留；
+- 🌐 **统一 Web 前端**：微信风格聊天界面，支持知识库状态提示、消息来源展示。
 
 ---
 
-## 🧩 模型注册机制
+## 🧭 未来规划
 
-所有模型均通过 `ModelRegistry` 统一管理。
-
-示例：
-```python
-from bots.model_registry import model_registry
-from bots.openai_bot import OpenAIBot
-
-# 注册新模型
-model_registry.register("openai:gpt-4", OpenAIBot)
-```
-
-新增自定义模型：
-```python
-from bots.base_bot import BaseBot
-
-class MyBot(BaseBot):
-    def reply(self, query: str) -> str:
-        return "hello"
-
-    def reply_with_context(self, messages):
-        return "response with context"
-```
-
----
-
-## 🔍 知识检索（RAG）流程
-
-```mermaid
-flowchart TD
-    A[上传文件] --> B[文本分块]
-    B --> C[生成 Embeddings]
-    C --> D[写入 VectorStore]
-    D --> E[用户提问]
-    E --> F[召回 Top K 文档]
-    F --> G[LLM 根据上下文生成答案]
-    G --> H[返回最终回答]
-```
-
----
-
-## 🧪 调试与开发
-
-```bash
-# 格式化代码
-black .
-
-# 运行测试
-pytest -v
-
-# 启动调试模式
-uvicorn app.main:app --reload
-```
-
----
-
-## 📦 技术栈
-
-| 分类 | 技术 |
-|------|------|
-| 后端框架 | FastAPI |
-| 模型接口 | LangChain + OpenAI / Qwen / Gemini |
-| 向量库 | FAISS |
-| 前端界面 | HTML + 原生 JS |
-| 日志记录 | loguru |
-
----
-
-## 📘 版本规划
-
-| 版本 | 内容 |
-|------|------|
-| ✅ v1.0 | 多模型对话 + 知识检索基础功能 |
-| 🔄 v1.1 | WebSocket 流式输出、上下文优化 |
-| 🔜 v1.2 | 用户登录、命名空间隔离、权限系统 |
+- 🤖 接入 **LangChain Agent**，支持工具调用与函数执行；
+- 🔉 增加 **语音输入/输出** 功能；
+- 🖼️ 增加 **图像识别** 与视觉问答；
+- 🗄️ 支持 **多用户多会话持久化存储（SQLite / PostgreSQL）**；
+- 📦 优化 **知识库索引构建性能**；
+- ☁️ 支持 **Docker 一键部署**。
 
 ---
 
