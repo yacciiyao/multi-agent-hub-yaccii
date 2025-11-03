@@ -272,7 +272,7 @@
 
     <div class="main">
         <div class="app">
-            <div class="header">Nexa-Hub - AI Chat</div>
+            <div class="header">Nexa-Hub</div>
             <div class="toolbar">
                 <div class="toggle-group">
                     <span>模型：</span><select id="model"></select>
@@ -284,7 +284,7 @@
             </div>
             <div id="chat" class="chat"></div>
             <div class="composer">
-                <input id="q" type="text" placeholder="请输入问题…"/>
+                <input id="input" type="text" placeholder="请输入问题…"/>
                 <button id="send">发送</button>
             </div>
         </div>
@@ -293,64 +293,95 @@
 
 <script>
     const API_BASE = "http://127.0.0.1:8000";
-    const userId = 1;
+    const userId = 1; // 测试
     let sessionId = null;
     let useKG = false;
-    let everUsedKG = false;
+    let hasMessage = false;
 
-    const chatEl = document.getElementById("chat");
-    const input = document.getElementById("q");
+    const chatEl = document.getElementById("chat")
+    const input = document.getElementById("input")
     const sendBtn = document.getElementById("send");
     const modelEl = document.getElementById("model");
     const kgSwitch = document.getElementById("kg-switch");
     const sessionListEl = document.getElementById("session-list");
 
-    function addMsg({side, text, sources = []}) {
+    async function loadModels() {
+        const res = await fetch(`${API_BASE}/api/model/`);
+        const payload = await res.json();
+        const models = payload.data?.models || [];
+        models.forEach(m => {
+            const opt = document.createElement("option");
+            opt.value = m.id || m.name;
+            opt.textContent = `${m.family ? m.family + ": " : ""}${m.name}`;
+            modelEl.append(opt);
+        });
+    }
+
+    function addMsg({side, text, sources=[]}){
         const row = document.createElement("div");
         row.className = `msg-row ${side}`;
+
         const avatar = document.createElement("img");
         avatar.className = "avatar";
-        avatar.src = side === "left"
-            ? `${API_BASE}/static/images/avatar/ai.png`
-            : `${API_BASE}/static/images/avatar/user.png`;
-        const bubble = document.createElement("div");
-        bubble.className = "bubble";
-        bubble.textContent = text;
+        avatar.src = side === "left" ? `${API_BASE}/static/images/avatar/ai.png` : `${API_BASE}/static/images/avatar/user.png`;
+
+        const bubble = document.createElement("div")
+        bubble.className = "bubble"
+        bubble.textContent = text
+
         if (side === "left" && sources && sources.length > 0) {
             const srcBlock = renderSources(sources);
             if (srcBlock) bubble.appendChild(srcBlock);
         }
+
         if (side === "left") row.append(avatar, bubble);
         else row.append(bubble, avatar);
         chatEl.append(row);
         chatEl.scrollTop = chatEl.scrollHeight;
     }
 
-    function addSystemBanner(text) {
-        const div = document.createElement("div");
-        div.className = "system-banner";
-        div.textContent = text;
-        chatEl.append(div);
+    function addSystemBanner(text){
+        const div = document.createElement("div")
+        div.className = "system-banner"
+        div.textContent = text
+        chatEl.append(div)
         chatEl.scrollTop = chatEl.scrollHeight;
     }
 
     async function startNewChat() {
-        sessionId = null;
+        const model = modelEl.value || "gpt-3.5-turbo";
+        const res = await fetch(`${API_BASE}/api/chat/start`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                user_id: userId,
+                model_name: model,
+                use_kg: useKG
+            })
+        });
+
+        const payload = await res.json();
+        if (!payload.ok) {
+            alert(`创建新会话失败: ${payload.error}`);
+            return;
+        }
+
+        const data = payload.data;
+        sessionId = data.session_id;
+
         chatEl.innerHTML = "";
 
-        useKG = false;
-        everUsedKG = false;
-        kgSwitch.checked = false;
+        addSystemBanner(`👋 新会话已开启 (模型: ${modelEl.value}})`);
 
-        addSystemBanner("👋 新会话已开启");
-        highlightActiveSession(null);
+        highlightActiveSession(sessionId);
     }
 
-    async function send() {
+    async function send(){
         const text = input.value.trim();
-        if (!text) return;
-        addMsg({side: "right", text});
-        input.value = "";
+        if(!text) return
+
+        addMsg({"side": "right", text})
+        input.value = ""
         sendBtn.disabled = true;
 
         try {
@@ -359,22 +390,24 @@
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
                     query: text,
-                    model: modelEl.value,
                     user_id: userId,
                     session_id: sessionId,
                     use_kg: useKG,
+                    source: "web"
                 })
             });
-            const payload = await res.json();
+
+            const payload = await res.json()
             if (!payload.ok) {
-                addMsg({side: "left", text: `❌ 出错: ${payload.error || "未知错误"}`});
+                addMsg({side: "left", text: `❌ 出错了: ${payload.error || "未知错误"}, 请联系管理员`});
             } else {
-                const data = payload.data;
-                const aiText = data.text || "[无响应]";
-                addMsg({side: "left", text: aiText, sources: data.sources || []});
-                sessionId = data.session_id || sessionId;
-                await loadSessions();
-                highlightActiveSession(sessionId);
+                const data = payload.data
+                const aiText = data.text || "[无响应]"
+                addMsg({side: "left", text: aiText, sources: data.sources || []})
+                hasMessage = true
+
+                await loadSessions()
+                highlightActiveSession()
             }
         } catch (err) {
             addMsg({side: "left", text: "⚠️ 请求失败，请联系管理员"});
@@ -383,14 +416,62 @@
         }
     }
 
+    async function loadSessions(){
+        const res = await fetch(`${API_BASE}/api/chat/sessions?user_id=${userId}`);
+        const payload = await res.json();
+        const sessions = payload.data?.sessions || [];
+        sessionListEl.innerHTML = "";
+
+        sessions.forEach(sess => {
+            const div = document.createElement("div");
+            div.className = "session-item";
+            div.dataset.id = sess.session_id;
+            div.onclick = () => loadHistory(sess.session_id);
+
+            const name = document.createElement("span");
+            name.textContent = sess.session_name || "New Chat";
+
+            const del = document.createElement("button");
+            del.className = "delete-btn";
+            del.textContent = "🗑️";
+            del.onclick = async (e) => {
+                e.stopPropagation();
+                await fetch(`${API_BASE}/api/chat/clear`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({user_id: userId, session_id: sess.session_id})
+                });
+                await loadSessions();
+            };
+
+            div.append(name, del);
+            sessionListEl.append(div);
+        });
+    }
+
+    function highlightActiveSession(id) {
+        [...document.querySelectorAll(".session-item")].forEach(el => {
+            el.classList.toggle("active", el.dataset.id === id);
+        });
+    }
+
+    async function loadHistory(id) {
+        sessionId = id;
+        const res = await fetch(`${API_BASE}/api/chat/history?user_id=${userId}&session_id=${id}`);
+        const payload = await res.json();
+        const msgs = payload.data?.messages || [];
+
+        chatEl.innerHTML = "";
+        msgs.forEach(m => addMsg({side: m.role === "user" ? "right" : "left", text: m.content}));
+        highlightActiveSession(id);
+    }
+
     function toggleKnowledge() {
-        const prev = useKG;
         useKG = kgSwitch.checked;
-        if (useKG && !prev) {
-            everUsedKG = true;
-            addSystemBanner("🧠 用户开启知识库查询功能");
-        } else if (!useKG && prev) {
-            addSystemBanner("💬 用户关闭知识库查询功能");
+        if (useKG){
+            addSystemBanner("🧠 已开启知识库查询功能");
+        } else {
+            addSystemBanner("💬 已关闭知识库查询功能");
         }
     }
 
@@ -421,86 +502,25 @@
         return container;
     }
 
-    async function loadSessions() {
-        const res = await fetch(`${API_BASE}/api/chat/sessions?user_id=${userId}`);
-        const payload = await res.json();
-        const sessions = payload.data?.sessions || [];
-        sessionListEl.innerHTML = "";
-
-        sessions.forEach(sess => {
-            const div = document.createElement("div");
-            div.className = "session-item";
-            div.dataset.id = sess.session_id;
-            div.onclick = () => loadHistory(sess.session_id);
-
-            const name = document.createElement("span");
-            name.textContent = sess.session_name || "(未命名)";
-
-            const del = document.createElement("button");
-            del.className = "delete-btn";
-            del.textContent = "🗑️";
-            del.onclick = async (e) => {
-                e.stopPropagation();
-                await fetch(`${API_BASE}/api/chat/clear`, {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({user_id: userId, session_id: sess.session_id})
-                });
-                await loadSessions();
-            };
-
-            div.append(name, del);
-            sessionListEl.append(div);
-        });
-
-        const clearAllBtn = document.getElementById("clear-all-btn");
-        if (sessions.length > 0) {
-            clearAllBtn.style.display = "block";
-        } else {
-            clearAllBtn.style.display = "none";
-        }
-    }
-
-
-    function highlightActiveSession(id) {
-        [...document.querySelectorAll(".session-item")].forEach(el => {
-            el.classList.toggle("active", el.dataset.id === id);
-        });
-    }
-
-    async function loadHistory(id) {
-        sessionId = id;
-        const res = await fetch(`${API_BASE}/api/chat/history?user_id=${userId}&session_id=${id}`);
-        const payload = await res.json();
-        const msgs = payload.data?.messages || [];
-        chatEl.innerHTML = "";
-        msgs.forEach(m => addMsg({side: m.role === "user" ? "right" : "left", text: m.content}));
-        highlightActiveSession(id);
-    }
-
-    async function clearAllSessions() {
-        await fetch(`${API_BASE}/api/chat/clear_all?user_id=${userId}`, {method: "POST"});
-        sessionListEl.innerHTML = "";
-        chatEl.innerHTML = "";
-        sessionId = null;
-        addSystemBanner("🧹 所有会话已清空");
-    }
-
-    async function loadModels() {
-        const res = await fetch(`${API_BASE}/api/model/`);
-        const payload = await res.json();
-        const models = payload.data?.models || [];
-        models.forEach(m => {
-            const opt = document.createElement("option");
-            opt.value = m.id || m.name;
-            opt.textContent = `${m.family ? m.family + ": " : ""}${m.name}`;
-            modelEl.append(opt);
-        });
-    }
-
     sendBtn.onclick = send;
     input.addEventListener("keydown", e => {
         if (e.key === "Enter") send();
+    });
+
+    modelEl.addEventListener("change", async (e) => {
+        const newModel = e.target.value;
+
+        if (newModel === modelEl.value) return;
+
+        if (hasMessage){
+            const confirmed = confirm(`当前会话使用模型「${modelEl.value}」，\n是否新建会话以使用「${newModel}」？`);
+            if (confirmed) {
+                modelEl.value = newModel;
+                await startNewChat();
+            }
+        } else {
+            modelEl.value = newModel;
+        }
     });
 
     window.onload = async () => {
@@ -509,5 +529,3 @@
         addSystemBanner("👋 你好，我是你的 AI 助手，现在开始聊天吧～");
     };
 </script>
-</body>
-</html>

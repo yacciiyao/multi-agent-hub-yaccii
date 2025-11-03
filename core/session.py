@@ -24,11 +24,11 @@ class Session:
     session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     session_name: Optional[str] = None
     model_name: str = "gpt-3.5-turbo"
-    mode: str = "chat"  # "chat" | "knowledge" | "agent"
     use_kg: bool = False
     namespace: str = "default"
     agent_name: Optional[str] = None
     created_at: int = field(default_factory=lambda: int(time.time()))
+    updated_at: int = field(default_factory=lambda: int(time.time()))
     messages: List[Message] = field(default_factory=list)
 
     def append(self, msg: Message) -> None:
@@ -41,7 +41,6 @@ class Session:
             "session_id": self.session_id,
             "session_name": self.session_name,
             "model_name": self.model_name,
-            "mode": self.mode,
             "use_kg": self.use_kg,
             "namespace": self.namespace,
             "agent_name": self.agent_name,

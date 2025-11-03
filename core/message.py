@@ -24,9 +24,8 @@ class Message:
 
     role: str
     content: str
-    model_name: str
-    mode: str = "chat"
     source: str = "web"
+    use_kg: bool = False
     timestamp: int = field(default_factory=lambda: int(time.time()))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -34,8 +33,8 @@ class Message:
         return {
             "role": self.role,
             "content": self.content,
+            "source": self.source,
+            "use_kg": self.use_kg,
             "timestamp": self.timestamp,
-            "mode": self.mode,
-            "model_name": self.model_name,
             "metadata": self.metadata or {},
         }

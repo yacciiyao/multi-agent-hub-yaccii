@@ -24,7 +24,6 @@ class ConfigManager:
                 self._config = json.load(f)
 
         else:
-            print(f"[Config] 配置文件不存在, 使用默认配置")
             self._config = {}
 
         # 环境变量覆盖

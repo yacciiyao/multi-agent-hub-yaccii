@@ -5,7 +5,7 @@
 @Desc: 会话与消息管理服务（内存实现版）
 """
 import time
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 
 from core.message import Message
 from core.session import Session
@@ -30,31 +30,14 @@ class DialogueService:
 
         return self.user_sessions[user_id][session_id]
 
-    def new_session(self,
-                    user_id: int,
-                    session_name: str = None,
-                    model_name: str = "gpt-3.5-turbo",
-                    use_kg: bool = False,
-                    namespace: str = "default",
-                    agent_name: Optional[str] = None) -> str:
+    def new_session(self, user_id: int, model_name: str = "gpt-3.5-turbo", use_kg: bool = False) -> str:
         """ 创建新会话 """
-
         self._ensure_user(user_id)
-        mode = "agent" if agent_name else ("knowledge" if use_kg else "chat")
 
-        session = Session(
-            session_name=session_name,
-            model_name=model_name,
-            mode=mode,
-            use_kg=use_kg,
-            namespace=namespace,
-            agent_name=agent_name,
-        )
-
+        session = Session(model_name=model_name,use_kg=use_kg)
         self.user_sessions[user_id][session.session_id] = session
 
-        logger.info(
-            f"[Dialogue] New session user={user_id}, session={session.session_id}, model={model_name}, use_kg={use_kg}")
+        logger.info(f"[Dialogue] New session user={user_id}, session={session.session_id}, model={model_name}, use_kg={use_kg}")
 
         return session.session_id
 
@@ -75,63 +58,26 @@ class DialogueService:
     def rename_session(self, user_id: int, session_id: str, session_name: str) -> None:
         session = self._require_session(user_id, session_id)
         session.session_name = session_name
-        session.updated_at = time.time()
+        session.updated_at = int(time.time())
         logger.info(f"[Dialogue] Renamed session {session_id} -> {session_name}")
 
-    def update_session_config(
-            self,
-            user_id: int,
-            session_id: str,
-            *,
-            use_kg: Optional[bool] = None,
-            namespace: Optional[str] = None,  # 默认"default"
-            agent_name: Optional[str] = None) -> Session:
-
-        session = self._require_session(user_id, session_id)
-
-        if use_kg is not None:
-            prev = session.use_kg
-            session.use_kg = use_kg
-            logger.info(f"[Dialogue] user={user_id} session={session_id} use_kg {prev} -> {use_kg}")
-
-        if namespace is not None:
-            session.namespace = namespace
-        if agent_name is not None:
-            session.agent_name = agent_name
-
-        if session.agent_name:
-            session.mode = "agent"
-        else:
-            session.mode = "knowledge" if session.use_kg else "chat"
-
-        logger.info(
-            f"[Dialogue] Update config user={user_id} session={session_id} use_kg={session.use_kg} mode={session.mode} ns={session.namespace} agent={session.agent_name}"
-        )
-
-        return session
-
     def clear_session(self, user_id: int, session_id: str) -> None:
-        """删除单个会话"""
-
         self._ensure_user(user_id)
         if session_id in self.user_sessions[user_id]:
             del self.user_sessions[user_id][session_id]
             logger.info(f"[Dialogue] Cleared session {session_id} for user {user_id}")
 
     def clear_all_sessions(self, user_id: int) -> None:
-        """清空用户所有会话"""
-
         self._ensure_user(user_id)
-        count = len(self.user_sessions[user_id])
         self.user_sessions[user_id].clear()
-        logger.info(f"[Dialogue] Cleared {count} sessions for user {user_id}")
+        logger.info(f"[Dialogue] Cleared sessions for user {user_id}")
 
     def append_message(self, user_id: int, session_id: str, message: Message) -> None:
         self._ensure_user(user_id)
         session = self._require_session(user_id, session_id)
         session.append(message)
 
-        logger.info(f"[Dialogue] +msg user={user_id} session={session_id} role={message.role} mode={message.mode}")
+        logger.info(f"[Dialogue] +msg user={user_id} session={session_id} role={message.role}")
 
     def get_messages(self, user_id: int, session_id: str, *, as_chat_format: bool = True) -> List[Any]:
         session = self._require_session(user_id, session_id)

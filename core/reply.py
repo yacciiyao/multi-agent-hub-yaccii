@@ -14,7 +14,6 @@ class Reply(BaseModel):
     user_id: int
     session_id: str
     session_name: Optional[str] = None
-    model_name: str
     text: str
     sources: Optional[List[Dict[str, str]]] = []
     metadata: Optional[Dict[str, Optional[str]]] = None
