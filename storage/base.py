@@ -1,0 +1,58 @@
+# -*- coding: utf-8 -*-
+# @File: base.py
+# @Author: yaccii
+# @Time: 2025-11-07 11:40
+# @Description:
+from abc import ABC, abstractmethod
+from typing import Optional, List, Tuple, Dict, Any
+
+from domain.message import Message
+from domain.rag import RagDocument, RagChunk
+from domain.session import Session
+
+
+class IStorage(ABC):
+
+    # ------------- session -------------
+    @abstractmethod
+    async def create_session(self, session: Session) -> None: ...
+
+    @abstractmethod
+    async def rename_session(self, user_id: int, session_id: str, new_name: str) -> None: ...
+
+    @abstractmethod
+    async def get_session(self, user_id: int, session_id: str) -> Optional[Session]: ...
+
+    @abstractmethod
+    async def list_sessions(self, user_id: int) -> List[Session]: ...
+
+    @abstractmethod
+    async def delete_session(self, user_id: int, session_id: str) -> None: ...
+
+    @abstractmethod
+    async def delete_all_sessions(self, user_id: int) -> None: ...
+
+    # ------------- message -------------
+    @abstractmethod
+    async def append_message(self, msg: Message) -> None: ...
+
+    @abstractmethod
+    async def get_messages(self, user_id: int, session_id: str) -> List[Message]: ...
+
+    # ------------- rag -------------
+    @abstractmethod
+    async def upsert_rag_document(self, doc: RagDocument, chunks: List[RagChunk]) -> None: ...
+
+    @abstractmethod
+    async def list_rag_documents(self, user_id: int) -> List[RagDocument]: ...
+
+    @abstractmethod
+    async def delete_rag_document(self, user_id: int, doc_id: str) -> None: ...
+
+    @abstractmethod
+    async def get_rag_chunks_with_embeddings(self, limit: int) -> List[Dict[str, Any]]: ...
+
+
+    # ------------- default -------------
+    @abstractmethod
+    async def close(self): ...

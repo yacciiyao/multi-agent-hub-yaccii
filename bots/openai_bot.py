@@ -1,116 +1,131 @@
 # -*- coding: utf-8 -*-
-"""
-@Author: yaccii
-@Date: 2025-10-29 14:52
-@Desc: OpenAI 聊天接口
-"""
-from typing import Optional, List, Dict, AsyncIterator, Union
-from openai import AsyncOpenAI
-from infrastructure.config_manager import conf
-from infrastructure.logger import logger
+# @File: openai_bot.py
+# @Author: yaccii
+# @Time: 2025-11-09 07:22
+# @Description:
+import asyncio
+from typing import Optional, List, Dict, Union, AsyncIterator, Any, cast
+
+from openai import AsyncOpenAI, DefaultAioHttpClient, OpenAIError
+
 from bots.base_bot import BaseBot
+from infrastructure.config_manager import config
+from infrastructure.mlogger import mlogger
 
 
 class OpenAIBot(BaseBot):
-    family = "openai"
-    models_info = {
+    name = "OpenAI"
+    bots = {
         "gpt-3.5-turbo": {"desc": "经典稳定版，适合常规任务"},
         "gpt-4o-mini": {"desc": "轻量快速版 GPT-4"},
         "gpt-4o": {"desc": "旗舰多模态模型"},
+        "gpt-5-mini": {"desc": "兼顾速度、成本和能力"}
     }
 
-    def __init__(self, model_name: Optional[str] = None, **kwargs):
-        super().__init__()
-        cfg = conf().as_dict()
+    def __init__(self, bot_name: Optional[str] = None, **kwargs):
+        super().__init__(**kwargs)
+        _config = config.as_dict()
+        self.bot_name = bot_name or _config.get("openai_default_model")
 
-        api_key = cfg.get("openai_api_key")
+        if self.bot_name not in self.bots:
+            mlogger.warning(f"[OpenAIBot] unknown model '{self.bot_name}', allowed: {', '.join(self.bots.keys())}")
+
+        api_key = _config.get("openai_api_key")
         if not api_key:
-            raise RuntimeError("OpenAI API key not found.")
+            raise RuntimeError("OpenAI API key is required")
 
-        base_url = cfg.get("openai_base_url", "https://api.openai.com/v1")
-        self.model_name = model_name or cfg.get("openai_default_model", "gpt-3.5-turbo")
-        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        base_url = _config.get("openai_base_url", "https://api.openai.com/v1")
 
-    async def _chat_non_stream(self, messages: List[Dict[str, str]]) -> str:
-        """非流式调用"""
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, http_client=DefaultAioHttpClient())
+        self._max_token = _config.get("openai_max_token")
 
-        resp = await self.client.responses.create(
-            model=self.model_name,
-            input=messages,
+    async def aclose(self) -> None:
+        try:
+            await self.client.close()
+        except Exception as e:
+            mlogger.warning(f"[OpenAIBot] Failed to close the OpenAIBot instance: {e}")
+
+    @staticmethod
+    def _to_messages(messages: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+        output: List[Dict[str, Any]] = []
+        for message in messages:
+            role = (message.get("role") or "user").strip()
+            text = (message.get("text") or message.get("content") or "").strip()
+            if not text:
+                continue
+
+            part_type = "input_text" if role in ("user", "system") else "output_text"
+
+            output.append({"role": role, "content": [{"type": part_type, "text": text}]})
+
+        return output
+
+    async def _chat_completion(self, messages: List[Dict[str, str]]) -> str:
+        messages = self._to_messages(messages)
+
+        response = await self.client.responses.create(
+            model=self.bot_name,
+            input=cast(Any, messages),
+            max_output_tokens=self._max_token
         )
 
-        text = getattr(resp, "output_text", None)
-        if text is not None:
+        text = getattr(response, "output_text", None)
+        if text:
             return text
 
-        try:
-            chunks = []
-            for out in getattr(resp, "output", []) or []:
-                if getattr(out, "type", "") == "output_text":
-                    chunks.append(getattr(out, "content", "") or "")
-            return "".join(chunks) if chunks else ""
-        except Exception:
-            return ""
+        chunks: List[str] = []
+        for output in getattr(response, "output", []) or []:
+            if getattr(output, "type", "") == "output_text":
+                chunks.append(getattr(output, "content", "") or "")
+
+        return "".join(chunks) if chunks else ""
 
     async def _chat_stream(self, messages: List[Dict[str, str]]) -> AsyncIterator[str]:
-        """
-        流式调用 Responses API,
-        将 token 拼接成完整片段后再 yield, 避免逐字输出导致前端格式混乱。
-        """
-        logger.info(f"[OpenAIBot] 调用模型 {self.model_name}, stream=True")
-
+        messages = self._to_messages(messages)
         stream = self.client.responses.stream(
-            model=self.model_name,
-            input=messages,
+            model=self.bot_name,
+            input=cast(Any, messages),
+            max_output_tokens=self._max_token
         )
 
         async def generator() -> AsyncIterator[str]:
             buffer = ""
             async with stream as s:
                 async for event in s:
-                    et = getattr(event, "type", "")
-                    if et == "response.output_text.delta":
-                        delta = getattr(event, "delta", "")
+                    event_type = getattr(event, "type", "")
+                    if event_type == "response.output_text.delta":
+                        delta = getattr(event, "delta", None)
                         if not delta:
                             continue
 
                         buffer += delta
-
-                        # 每当遇到换行或标点时，输出一次
                         if any(buffer.endswith(x) for x in [".", "!", "?", "\n", "。", "！", "？"]):
                             yield buffer
                             buffer = ""
 
-                    elif et == "response.error":
-                        err = getattr(event, "error", None)
-                        msg = getattr(err, "message", "") if err else "unknown error"
-                        logger.error(f"[OpenAIBot] stream error: {msg}")
-                        yield f"[ERROR] {msg}"
+                    elif event_type == "response.completed":
+                        pass
+
+                    elif event_type == "response.error" or event_type == "error":
+                        error = getattr(event, "error", None)
+                        message = getattr(error, "message", None) if error else None
+                        mlogger.error(f"[OpenAIBot] stream message: {message}]")
+                        yield f"[Error]: {message}]"
                         return
 
-                # 输出残余内容（最后一段）
                 if buffer.strip():
                     yield buffer.strip()
 
-            # 正常结束
-            yield "[DONE]"
-
         return generator()
 
-    async def chat(
-        self,
-        messages: List[Dict[str, str]],
-        stream: bool = False
-    ) -> Union[str, AsyncIterator[str]]:
-        logger.info(f"[OpenAIBot] 调用模型 {self.model_name}, stream={stream}")
+    async def chat(self, messages: List[Dict[str, str]], stream: bool = False) -> Union[str, AsyncIterator[str]]:
         if stream:
             return await self._chat_stream(messages)
-        return await self._chat_non_stream(messages)
+        return await self._chat_completion(messages)
 
     async def healthcheck(self) -> bool:
         try:
-            _ = await self.client.models.list()
+            await asyncio.wait_for(self.client.models.list(), timeout=5)
             return True
-        except Exception as e:
-            logger.warning(f"[OpenAIBot] healthcheck 失败: {e}")
+        except (OpenAIError, asyncio.TimeoutError):
             return False

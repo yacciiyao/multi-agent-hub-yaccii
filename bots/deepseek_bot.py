@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-# @File: qwen_bot.py
+# @File: deepseek_bot.py
 # @Author: yaccii
-# @Time: 2025-11-09 13:02
+# @Time: 2025-11-09 11:37
 # @Description:
 import asyncio
-from typing import Optional, List, Dict, cast, Any, AsyncIterator, Union
+from typing import List, Dict, Union, AsyncIterator, Optional, Any, cast
 
 from openai import AsyncOpenAI, DefaultAioHttpClient, OpenAIError
 
@@ -13,27 +13,26 @@ from infrastructure.config_manager import config
 from infrastructure.mlogger import mlogger
 
 
-class QwenBot(BaseBot):
-    name = "Qwen"
+class DeepSeekBot(BaseBot):
+    name = "DeepSeek"
     bots = {
-        "qwen2.5-7b-instruct": {"desc": "轻量指令模型"},
-        "qwen2.5-72b-instruct": {"desc": "高性能指令模型"},
-        "qwen3-32b": {"desc": "Qwen3 系列 32B（兼容模式）"},
+        "deepseek-chat": {"desc": "DeepSeek 对话模型"},
+        "deepseek-reasoner": {"desc": "带推理能力的模型"},
     }
 
     def __init__(self, bot_name: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
         _config = config.as_dict()
-        self.bot_name = bot_name or _config.get("qwen_default_model")
+        self.bot_name = bot_name or _config.get("deepseek_default_model")
 
         if self.bot_name not in self.bots:
-            mlogger.warning(f"[QwenBot] unknown model '{self.bot_name}', allowed: {', '.join(self.bots.keys())}")
+            mlogger.warning(f"[DeepSeekBot] unknown model '{self.bot_name}', allowed: {', '.join(self.bots.keys())}")
 
-        api_key = _config.get("qwen_api_key")
+        api_key = _config.get("deepseek_api_key")
         if not api_key:
-            raise RuntimeError("Qwen API key is required")
+            raise RuntimeError("DeepSeek API key is required")
 
-        base_url = _config.get("qwen_base_url", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1")
+        base_url = _config.get("deepseek_base_url", "https://api.deepseek.com/v1")
 
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url, http_client=DefaultAioHttpClient())
         self._max_token = _config.get("openai_max_token")
@@ -42,7 +41,7 @@ class QwenBot(BaseBot):
         try:
             await self.client.close()
         except Exception as e:
-            mlogger.warning(f"[QwenBot] Failed to close the QwenBot instance: {e}")
+            mlogger.warning(f"[DeepSeekBot] Failed to close the DeepSeekBot instance: {e}")
 
     @staticmethod
     def _to_messages(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -97,7 +96,7 @@ class QwenBot(BaseBot):
                         continue
 
                 except Exception as e:
-                    mlogger.warning(f"[QwenBot] Stream generator error: {e}")
+                    mlogger.warning(f"[DeepSeekBot] Stream generator error: {e}")
                     continue
 
                 buffer += delta

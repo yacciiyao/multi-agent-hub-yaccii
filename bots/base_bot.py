@@ -1,26 +1,25 @@
 # -*- coding: utf-8 -*-
-"""
-@Author: yaccii
-@Date: 2025-10-29 14:52
-@Desc:
-"""
-from typing import Dict, List, Dict as TDict, AsyncIterator, Union
+# @File: base_bot.py
+# @Author: yaccii
+# @Time: 2025-11-08 17:27
+# @Description:
+from abc import ABC, abstractmethod
+from typing import Dict, List, Union, AsyncIterator
 
 
-class BaseBot:
-    """所有模型的统一抽象接口"""
+class BaseBot(ABC):
+    """模型统一抽象基类"""
 
-    family: str = "unknown"
-    models_info: Dict[str, dict] = {}
+    name = "unknow"
+    bots: Dict[str, Dict] = {}
 
-    async def chat(
-            self,
-            messages: List[TDict[str, str]],
-            stream: bool = False
-    ) -> Union[str, AsyncIterator[str]]:
-        """
-        子类必须实现：
-        - 非流式：返回完整字符串
-        - 流式：返回 AsyncIterator[str]（可 async for）
-        """
+    def __init__(self, **kwargs):
+        self._extras = kwargs
+
+    @abstractmethod
+    async def chat(self, messages: List[Dict[str, str]], stream: bool = False) -> Union[str, AsyncIterator[str]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def healthcheck(self) -> bool:
         raise NotImplementedError

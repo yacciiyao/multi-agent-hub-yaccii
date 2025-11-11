@@ -1,5 +1,4 @@
 /.venv/
 /config.json
 .idea
-/data/vector_stores/
-/data/uploads/
+/run.py

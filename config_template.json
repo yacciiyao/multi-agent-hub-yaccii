@@ -1,16 +1,52 @@
 {
   "openai_api_key": "",
   "openai_base_url": "",
-  "openai_model": "gpt-3.5-turbo",
-  "rag": {
-    "store_dir": "./data/vector_stores",
-    "default_namespace": "default",
-    "embedding": {
-      "provider": "openai",
-      "model_name": "text-embedding-3-small"
-    },
-    "chunk_size": 800,
-    "chunk_overlap": 150,
-    "top_k": 5
+  "openai_default_model": "gpt-3.5-turbo",
+  "openai_max_token": 512,
+
+  "qwen_api_key": "",
+  "qwen_base_url": "",
+  "qwen_default_model": "qwen3-32b",
+  "qwen_max_token": 512,
+
+  "deepseek_api_key": "",
+  "deepseek_base_url": "",
+  "deepseek_default_model": "deepseek-chat",
+  "deepseek_max_token": 512,
+
+  "claude_api_key": "",
+  "claude_base_url": "https://api.openai-proxy.org/anthropic",
+  "claude_default_model": "claude-haiku-4-5",
+  "claude_max_token": 512,
+
+  "gemini_api_key": "",
+  "gemini_base_url": "https://api.openai-proxy.org/google",
+  "gemini_default_model": "gemini-2.5-flash",
+  "gemini_max_token": 512,
+
+  "storage": "mysql",
+  "database": {
+    "host": "",
+    "port": 3306,
+    "user": "",
+    "password": "",
+    "database": ""
+  },
+
+  "max_sessions": 100,
+  "max_messages_count": 100,
+  "max_messages_length": 100,
+
+  "embedding": {
+    "provider": "openai",
+    "model": "text-embedding-3-small",
+    "batch_size": 64,
+    "version": 1,
+    "max_chunks_scan": 5000
+  },
+  "rag_split": {
+    "target_tokens": 400,
+    "max_tokens": 800,
+    "sentence_overlap": 2
   }
 }
