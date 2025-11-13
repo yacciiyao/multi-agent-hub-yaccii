@@ -2,7 +2,7 @@
 # @File: gemini_bot.py
 # @Author: yaccii
 # @Time: 2025-11-09 13:13
-# @Description:
+# @Description: Gemini 模型
 import asyncio
 from typing import Optional, List, Dict, AsyncIterator, Union
 

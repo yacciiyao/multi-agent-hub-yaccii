@@ -48,10 +48,10 @@ def create_app() -> FastAPI:
 
     # 路由注册
     app = FastAPI(title="multi-agent-hub", lifespan=lifespan)
-    app.include_router(bots_router.router, prefix="/bots", tags=["models"])
-    app.include_router(sessions_router.router, prefix="/sessions", tags=["sessions"])
-    app.include_router(messages_router.router, prefix="/messages", tags=["messages"])
-    app.include_router(rag_router.router, prefix="/rag", tags=["rag"])
+    app.include_router(bots_router.router)
+    app.include_router(sessions_router.router)
+    app.include_router(messages_router.router)
+    app.include_router(rag_router.router)
 
     # 静态文件
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))

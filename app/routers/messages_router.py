@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from starlette.responses import StreamingResponse
 
 from core.message_service import MessageService
+from core.session_service import SessionService
 from domain.enums import Role, Channel
 from domain.message import Message
 from infrastructure.response import failure, success
@@ -20,58 +21,77 @@ def get_message_service() -> MessageService:
     return MessageService()
 
 
-class SendMessageRequest(BaseModel):
+def get_session_service() -> SessionService:
+    return SessionService()
+
+
+class ChatRequest(BaseModel):
     user_id: int = Field(..., description="用户ID")
     session_id: str = Field(..., description="会话ID")
-    content: str = Field(..., min_length=1, description="消息内容")
-    role: Role = Field(default=Role.USER, description="角色：user/assistant/system（默认 user）")
-    stream: bool = Field(default=False, description="是否流式输出")
-    rag_enabled: Optional[bool] = Field(default=None, description="是否启用知识库（None 表示不改动）")
-    channel: Channel = Field(default=Channel.WEB, description="消息来源：web/wechat/dingtalk（默认 web）")
+    role: Role = Field(default=Role.USER, description="消息角色")
+    content: str = Field(..., description="消息内容")
+    stream: bool = Field(default=False, description="是否流式返回")
+    rag_enabled: bool = Field(default=False, description="是否启用RAG")
+    channel: Channel = Field(default=Channel.WEB, description="渠道")
 
 
-router = APIRouter()
+router = APIRouter(prefix="/messages", tags=["messages"])
+
+
+@router.get("/history", summary="获取消息历史")
+async def history(user_id: int = Query(..., description="用户ID"),
+                  session_id: str = Query(..., description="会话ID")):
+    svc = get_message_service()
+    data = await svc.get_messages(user_id=user_id, session_id=session_id)
+    return success(data={"history": data})
 
 
 @router.post("/chat", summary="发送消息")
-async def send_message(request: SendMessageRequest):
-    message_service = get_message_service()
-
-    message = Message(
+async def chat(request: ChatRequest):
+    msg = Message(
         session_id=request.session_id,
-        role=Role.USER,
+        role=request.role,
         content=request.content,
-        rag_enabled=request.rag_enabled,
-        sources=[],
-        created_at=int(time.time()),
-        is_deleted=False,
+        rag_enabled=bool(request.rag_enabled),
+        stream_enabled=bool(request.stream),
     )
+
+    message_svc = get_message_service()
     try:
         if request.stream:
-            reply = await message_service.send_message(user_id=request.user_id, message=message, stream=True)
-            return StreamingResponse(reply, media_type="text/plain; charset=utf-8")
-
+            gen = await message_svc.send_message(
+                user_id=request.user_id,
+                message=msg,
+                stream=True,
+            )
+            return StreamingResponse(gen, media_type="text/plain; charset=utf-8")
         else:
-            result = await message_service.send_message(user_id=request.user_id, message=message, stream=False)
+            result = await message_svc.send_message(
+                user_id=request.user_id,
+                message=msg,
+                stream=False,
+            )
             return success(data=result)
-
     except Exception as e:
         return failure(message=str(e))
 
 
-@router.get("/system", summary="保存系统提示消息")
-async def send_system_tip(user_id: int, session_id: str, content: str, rag_enabled: bool | None = None, ):
-    message_service = get_message_service()
-    await message_service.add_system_tip(user_id=user_id, session_id=session_id, content=content, rag_enabled=rag_enabled)
+@router.post("/system", summary="系统提示")
+async def system_tip(user_id: int = Query(..., description="用户ID"),
+                     session_id: str = Query(..., description="会话ID"),
+                     rag: Optional[int] = Query(None, description="若提供则同步RAG状态，1启用/0关闭")):
+    if rag is None:
+        return success()
+
+    session_svc = get_session_service()
+    session = await session_svc.get_session(user_id=user_id, session_id=session_id)
+    if not session_svc:
+        return failure(message="session not found")
+
+    await session_svc.update_session_flag(
+        user_id=user_id,
+        session_id=session_id,
+        rag_enabled=bool(int(rag)),
+        stream_enabled=bool(session.get("stream_enabled", False)),
+    )
     return success()
-
-
-@router.get("/history", summary="获取会话历史消息")
-async def get_history(
-        user_id: int = Query(..., description="用户ID"),
-        session_id: str = Query(..., description="会话ID"),
-):
-    message_service = get_message_service()
-    history = await message_service.get_messages(user_id=user_id, session_id=session_id)
-
-    return success(data={"history": history})

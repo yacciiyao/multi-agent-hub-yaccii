@@ -2,7 +2,7 @@
 # @File: openai_bot.py
 # @Author: yaccii
 # @Time: 2025-11-09 07:22
-# @Description:
+# @Description: OpenAI 模型
 import asyncio
 from typing import Optional, List, Dict, Union, AsyncIterator, Any, cast
 

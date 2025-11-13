@@ -1,40 +1,49 @@
-# multi-agent-hub
+# Multi‑Agent Hub (Yaccii Edition)
 
-> 多模型、多平台的智能 AI 中台系统（Multi‑Agent Hub）。  
-> 统一封装模型与消息渠道，支持 Agent 协作与 RAG，帮助快速搭建企业级 AI 应用。
-
----
-
-## ✨ 特性概览
-
-- **多模型聚合**：通过统一抽象层接入/切换不同大模型供应商与模型版本。  
-- **多渠道接入**：`bots/` 适配外部 IM/客服/工单等消息入口。  
-- **Agent 编排**：`core/` 提供角色、会话与工具调用机制，可扩展为多智能体协作。  
-- **RAG 检索增强**：`rag/` 覆盖文档切分、嵌入、索引、检索与（可选）重排。  
-- **可插拔基础设施**：`infrastructure/` 抽象模型、向量库、日志、缓存等实现。  
-- **持久化与会话**：`storage/` 管理对话历史、索引与任务状态，便于审计与追踪。  
-- **静态资源**：`web/static/` 存放前端演示页或控制台的静态文件。  
-- **应用入口**：`app/` 提供 API/Runner/CLI 等装配与启动代码。
-
-> 以上根据仓库根目录当前可见结构整理，细节以源码为准。
+> 轻量、可落地的多模型对话与RAG框架。支持会话管理、流式输出、可折叠的数据来源、RAG 文档库、MySQL 持久化、可插拔 Bot 与存储实现。
 
 ---
 
-## 📦 目录结构
+## ✨ 特性一览
+
+- **即插即用的多模型 Bot 架构**：`bots/` 注册中心（支持自定义，如 Claude、OpenAI、DeepSeek 等）。  
+- **稳健的消息管线**：历史上下文裁剪、长度控制、会话自动命名。  
+- **RAG 集成**：RAG 文档入库、分片、检索，前端展示。  
+- **会话持久化**：MySQL 存储（同时提供内存版 `MemoryStorage`）。  
+- **前端体验**：
+  - `chat.html` 极简单页。
+  - 支持「流式输出」「启用RAG」独立开关与系统提示。
+- **API**：`/sessions/*`、`/messages/*` 路由与返回结构稳定。  
+- **代码结构清晰**：`core/` 业务服务层、`domain/` 数据模型、`infrastructure/` 基础设施抽象。
+
+---
+
+## 📦 目录结构（核心）
 
 ```
 .
-├─ app/                 # 应用入口（API/服务进程/调度或 CLI）
-├─ bots/                # 外部平台/IM 机器人接入
-├─ core/                # 会话、Agent、工具、路由、中间件
-├─ domain/              # 领域模型与业务实体（DTO/UseCase 等）
-├─ infrastructure/      # 模型/向量库/日志/缓存等适配层
-├─ rag/                 # 文档切分/嵌入/索引/检索/重排
-├─ storage/             # 数据与会话持久化（ORM/DAO/抽象）
-├─ web/static/          # 前端静态资源
-├─ config_template.json # 配置模板（复制为 config.json 后使用）
-├─ requirements.txt     # Python 依赖
-└─ .gitignore
+├─ bots/                   # Bot 接入（e.g. Claude、OpenAI），注册中心在 bots/bot_registry.py
+├─ core/
+│  ├─ message_service.py   # 统一消息管线：历史、RAG、流式、持久化、自动命名
+│  └─ session_service.py   # 会话生命周期：创建、列表、删除、flag 同步
+├─ domain/
+│  ├─ enums.py             # Channel/Role 等
+│  ├─ message.py           # Message/RagSource
+│  └─ session.py           # Session
+├─ infrastructure/
+│  ├─ config_manager.py    # 配置读取
+│  ├─ response.py          # success/failure 统一返回
+│  ├─ storage_manager.py   # IStorage 选择（MySQL / Memory）
+│  └─ mlogger.py           # 简易日志
+├─ routers/
+│  ├─ message_router.py    # /messages/*
+│  └─ session_router.py    # /sessions/*
+├─ storage/
+│  ├─ base.py              # IStorage 接口
+│  ├─ mysql_storage.py     # MySQL 实现（建表、自恢复、批量写入）
+│  └─ memory_storage.py    # 内存实现（开发调试）
+└─ web/
+   └─ chat.html            # 前端单页（纯原生 DOM）
 ```
 
 ---
@@ -42,116 +51,165 @@
 ## 🚀 快速开始
 
 ### 1) 环境要求
-- Python 3.10+
-- （可选）向量数据库：如 Chroma / Qdrant / Milvus 等
-- （可选）持久化组件：如 Redis / PostgreSQL / SQLite 等
 
-### 2) 安装
+- Python 3.10+
+- MySQL 5.7+/8.0+
+- 推荐：创建虚拟环境并安装依赖
 
 ```bash
-git clone https://github.com/yacciiyao/multi-agent-hub-yaccii.git
-cd multi-agent-hub-yaccii
-
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-
-pip install -U pip
 pip install -r requirements.txt
 ```
 
-### 3) 配置
+### 2) 配置
+
+在 `infrastructure/config_manager.py` 所读取的配置文件或环境变量中，设置：
+
+- **数据库**：
+  - `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DB`
+- **会话与消息限制（可选）**：
+  - `max_sessions`（默认 50）
+  - `max_messages_count`（默认 200）
+  - `max_messages_length`（默认 8000）
+- **模型密钥**：对应 Bot 的密钥，如：
+  - `ANTHROPIC_API_KEY`
+  - `OPENAI_API_KEY`
+  - …
+
+> 首次运行时 `MySQLStorage` 会自动建表（`chat_sessions`/`chat_messages`/`rag_documents`/`rag_chunks`）。
+
+### 3) 启动后端
+
+以 FastAPI/Uvicorn 为例：
 
 ```bash
-cp config_template.json config.json
+uvicorn main:app --reload --port 8000
 ```
 
-在 `config.json` 中按需填写（字段以模板为准）：
+### 4) 打开前端
 
-- `model_providers`：各模型供应商（如 OpenAI/Azure/Qwen 等）的 `api_key`、`base_url`、`model`。  
-- `embedding`：嵌入模型与维度。  
-- `vector_store`：类型与连接参数（库名/主机/端口/集合名）。  
-- `storage`：数据库/文件存储配置。  
-- `bots`：各渠道的 token、回调 URL、签名/加密参数。  
-- `routing`：模型选择策略、负载与降级。  
-- `rag`：分片大小、重叠、召回数、重排开关、知识库路径等。  
-
-> 请将密钥放入环境变量或独立的密钥管理方案，避免写入代码库。
-
-### 4) 运行
-
-> 具体入口以 `app/` 实现为准，可尝试：
-
-```bash
-# 方式 A：模块启动（如果 app 定义了 __main__）
-python -m app
-
-# 方式 B：直接运行主脚本（若存在）
-python app/main.py
-
-# 方式 C：若提供 Web API（FastAPI/Flask 等），例如：
-# uvicorn app.api:app --host 0.0.0.0 --port 8000 --reload
-```
-
-启动后根据控制台日志访问健康检查或 Swagger（若提供）。
-
----
-
-## 🧠 工作流与架构
+开发阶段直接用浏览器打开：
 
 ```
-入站消息 ──> bots/* → app/*（路由/中间件/依赖注入）
-                         ↓
-                      core/*（会话 & Agent 编排 & 工具调用）
-                    ┌───────┴─────────┐
-                    │                 │
-                  rag/*           infrastructure/*（LLM/Embeddings）
-                    │                 │
-                 向量库/索引         storage/*（DB/文件/缓存）
+web/chat.html
 ```
 
-- **core**：维护会话状态、角色与工具调用协议；可扩展多智能体流程。  
-- **rag**：文档 → 切分 → 嵌入 → 写入向量库；查询时召回/重排并注入上下文。  
-- **infrastructure**：对第三方 LLM/Embedding/向量库的统一适配（鉴权、超时、重试、观测）。  
-- **storage**：记录消息、检索日志与执行轨迹，支持审计与回溯。
+> 若使用后端静态托管，可将 `web/` 配置为静态目录。
 
 ---
 
-## 🛠️ 开发指引
+## 🖥️ 前端使用说明（`web/chat.html`）
 
-- **新增模型提供方**：在 `infrastructure/` 新增适配器，实现统一接口（鉴权/超时/重试/指标）。  
-- **新增机器人渠道**：在 `bots/` 实现接入/验签，统一消息格式。  
-- **新增工具**：在 `core/` 注册工具，声明参数校验与幂等；结合 RAG/搜索等能力。  
-- **观测与日志**：建议为链路打点（入站→LLM→工具→存储）并接入指标看板。  
-- **配置与密钥**：使用环境变量或密钥管理服务，不提交到 Git。
+- 工具栏：**模型选择**、**流式输出**(`ck-stream`)、**启用RAG**(`ck-rag`)；状态提示。  
+- 会话列表：时间倒序，支持删除；切换会话自动同步 `rag/stream` 开关状态。  
+- 消息区：
+  - 用户与助手双列头像气泡。
+  - 助手消息下方为 **「数据来源」折叠面板**（仅 RAG 时出现），点击展开/收起。
+- 系统提示：切换 `rag/stream` 时在消息流内插入提示。
 
----
-
-## 🧪 测试与示例（建议）
-- 提供最小可运行示例：本地对话、RAG 检索、Agent 协作流程。  
-- 对关键模块（适配器、召回/重排、工具协议）补充单元/集成测试。  
-
----
-
-## 🔒 安全与合规（建议）
-- 开启请求/响应脱敏与审计日志；对敏感字段做加密存储。  
-- 按场景配置速率限制与成本预算；区分开发/测试/生产配置。  
+**效果图（示意）：**
+![对话页面](web/static/images/frontend-chat.png)
+![切换模型](web/static/images/switch-model.png)
+![开启RAG](web/static/images/rag.png)
 
 ---
 
-## 🗺️ 路线图（可选）
-- [ ] 预置更多模型与向量库适配器
-- [ ] 内置多 Agent 模板（任务分解、评审、执行器）
-- [ ] 完整 FastAPI 管理台及 OpenAPI 文档
-- [ ] 评测/对齐与成本看板
+## 🔌 API 速览
+
+### Sessions
+
+- `POST /sessions/create`
+  - body: `{ "user_id": 1, "bot_name": "claude-3-5-haiku-20241022", "channel": "web" }`
+  - resp: `{ "session_id": "uuid" }`
+- `POST /sessions/list?user_id=1`
+  - resp: `[{ session... }]`
+- `POST /sessions/delete?user_id=1&session_id=...`
+- `POST /sessions/delete_all?user_id=1`
+- `POST /sessions/{session_id}/flags`
+  - body: `{ "rag_enabled": true, "stream_enabled": false, "idempotency_key": "..." }`
+
+### Messages
+
+- `GET /messages/history?user_id=1&session_id=...`
+  - resp: `{ history: [Message...] }`
+- `POST /messages/chat`
+  - body: `{ user_id, session_id, role, content, stream, rag_enabled, channel }`
+  - 非流式：`{ reply, sources }`
+  - 流式：`text/plain` 持续写出，首帧若为 RAG 将包含 `[[RAG_SOURCES]]{...}` 元数据
+
+**RAG Sources 元数据（首帧示例）**
+
+```text
+[[RAG_SOURCES]]{"type":"rag_sources","sources":[{"title":"...","url":"...","snippet":"...","score":0.83,"meta":{"...":"..."}}]}
+```
+
+前端会把正文里的 `[[RAG_SOURCES]]...` 片段剔除，仅在折叠面板展示。
 
 ---
 
-## 📄 许可证
+## 🧠 RAG 能力
 
-如仓库未附带 LICENSE，建议补充（例如 MIT/Apache-2.0）。请根据业务需求选择。
+- 文档表：`rag_documents`（标题/URL/标签、嵌入配置与版本、预处理参数等）  
+- 分片表：`rag_chunks`（文段内容、向量、顺序、用户隔离）  
+- 语义检索：`RagService.semantic_search(query)` 返回内容与元数据；消息服务将其整合为系统提示注入上文。
+
+> 支持向量维度与模型版本落盘，便于升级重嵌与差分。
 
 ---
 
-**欢迎提交 Issue/PR 共同完善！**
+## 🗃️ 数据库
+
+- `chat_sessions`：保存 `rag_enabled`、`stream_enabled`、`session_name`、时间索引等。  
+- `chat_messages`：消息明细、`rag_enabled`、`stream_enabled`、`sources` JSON。  
+- `rag_documents` / `rag_chunks`：RAG 语料与分片。
+
+
+## ⚙️ Bot 对接
+
+- 统一上下文结构：`[{"role":"user|assistant|system", "content":"..."}]`
+- Claude/Anthropic：注意 `messages.create` 的 `messages=[MessageParam]` 与 `system` 字段类型。
+- 流式：服务端以迭代器输出，首帧可附带 RAG 源；前端 `fetch` + `ReadableStream` 增量渲染。
+- 非流式：一次性返回 `reply/sources`。
+
+---
+
+## 🧪 本地开发清单
+
+- ✅ `MemoryStorage` 可无数据库跑通整体流程。  
+- ✅ `MySQLStorage` 自动建表；断线轻重试。  
+- ✅ 前端无需构建，直接双击 `chat.html`。  
+- ✅ 提供会话限额与消息限额，避免滥用。
+
+---
+
+## 🛠️ 运行与部署建议
+
+- 生产环境建议：
+  - 反向代理（Nginx）与静态目录缓存。
+  - 开启访问日志与应用日志轮转。
+  - 对接对象存储保存上传文档；异步批量嵌入。  
+  - 数据库读写分离或连接池上限控制。
+
+---
+
+## 🧩 可选扩展
+
+- 多 Agent：在 `core/message_service.py` 中引入 Agent Orchestrator，串联工具、计划与反思。  
+- 工作流：增加任务流转表与节点执行日志。  
+- 模型微调：把业务词表/提示词固化为适配层或 LoRA，接入推理端点。  
+- 指标与埋点：简单 Prometheus 导出器 + 前端交互事件上报。
+
+---
+
+## 📜 许可证
+
+MIT（或根据你公司策略调整）。
+
+---
+
+## 🤝 贡献
+
+欢迎提交 PR：
+- 新增 Bot 适配器
+- RAG 检索算法优化
+- UI/UX 小改进
+- Bug 修复与单测

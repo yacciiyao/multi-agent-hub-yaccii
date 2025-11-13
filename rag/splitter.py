@@ -39,7 +39,6 @@ def _split_by_headings(text: str) -> List[Tuple[str, str]]:
     if not text.strip():
         return []
     parts = []
-    last = 0
     matches = list(_HEADING_PAT.finditer(text))
     if not matches:
         return [("", text.strip())]

@@ -2,7 +2,7 @@
 # @File: claude_bot.py
 # @Author: yaccii
 # @Time: 2025-11-09 13:39
-# @Description:
+# @Description: Claude 模型
 import asyncio
 from typing import Optional, List, Dict, AsyncIterator, Union, Literal, Tuple
 
@@ -19,7 +19,6 @@ class ClaudeBot(BaseBot):
     bots = {
         "claude-3-5-sonnet-latest": {"desc": "旗舰对话/推理"},
         "claude-3-5-haiku-latest": {"desc": "性价比/低延迟"},
-        # 如需其它别名，可在这里扩展
     }
 
     def __init__(self, bot_name: Optional[str] = None, **kwargs):
@@ -44,38 +43,55 @@ class ClaudeBot(BaseBot):
         return
 
     @staticmethod
-    def _to_messages(messages: List[Dict[str, str]]) -> Tuple[str, List[MessageParam]]:
-        system_parts: List[str] = []
+    def _to_messages(messages: List[Dict[str, str]]) -> Tuple[Optional[List[TextBlockParam]], List[MessageParam]]:
+        system_blocks: List[TextBlockParam] = []
         norm: List[MessageParam] = []
 
         for m in messages:
             role = (m.get("role") or "user").strip()
-            text = (m.get("text") or m.get("content") or "").strip()
-            if not text:
+            content = m.get("content", m.get("text"))
+
+            blocks: List[TextBlockParam] = []
+            if isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text" and "text" in item:
+                        blocks.append({"type": "text", "text": str(item["text"]).strip()})
+                    else:
+                        blocks.append({"type": "text", "text": str(item).strip()})
+            elif isinstance(content, dict):
+                if content.get("type") == "text" and "text" in content:
+                    blocks = [{"type": "text", "text": str(content["text"]).strip()}]
+                else:
+                    blocks = [{"type": "text", "text": str(content).strip()}]
+            else:
+                text = str(content or "").strip()
+                if text:
+                    blocks = [{"type": "text", "text": text}]
+
+            if not blocks:
                 continue
+
             if role == "system":
-                system_parts.append(text)
+                system_blocks.extend(blocks)
                 continue
 
             role_lit: Literal["user", "assistant"] = "assistant" if role == "assistant" else "user"
+            norm.append({"role": role_lit, "content": blocks})
 
-            block: TextBlockParam = {"type": "text", "text": text}
-            content_list: List[TextBlockParam] = [block]
-            message: MessageParam = {"role": role_lit, "content": content_list}
-            norm.append(message)
-
-        system_text = "\n".join(system_parts) if system_parts else ""
-        return system_text, norm
+        return (system_blocks or None), norm
 
     async def _chat_completion(self, messages: List[Dict[str, str]]) -> str:
         system, norm = self._to_messages(messages)
 
-        response = await self.client.messages.create(
-            model=self.bot_name,
-            system=system or None,
-            messages=norm,
-            max_tokens=self._max_token
-        )
+        kwargs = {
+            "model": self.bot_name,
+            "messages": norm,
+            "max_tokens": self._max_token,
+        }
+        if system:
+            kwargs["system"] = system
+
+        response = await self.client.messages.create(**kwargs)
 
         output: List[str] = []
         for block in getattr(response, "content", []) or []:
@@ -86,11 +102,16 @@ class ClaudeBot(BaseBot):
 
     async def _chat_stream(self, messages: List[Dict[str, str]]) -> AsyncIterator[str]:
         system, norm = self._to_messages(messages)
-        stream = self.client.messages.stream(
-            model=self.bot_name,
-            messages=norm,
-            max_tokens=self._max_token
-        )
+
+        kwargs = {
+            "model": self.bot_name,
+            "messages": norm,
+            "max_tokens": self._max_token,
+        }
+        if system:
+            kwargs["system"] = system
+
+        stream = self.client.messages.stream(**kwargs)
 
         async def generator() -> AsyncIterator[str]:
             buffer = ""
@@ -122,6 +143,7 @@ class ClaudeBot(BaseBot):
     async def chat(self, messages: List[Dict[str, str]], stream: bool = False) -> Union[str, AsyncIterator[str]]:
         if stream:
             return await self._chat_stream(messages)
+
         return await self._chat_completion(messages)
 
     async def healthcheck(self) -> bool:

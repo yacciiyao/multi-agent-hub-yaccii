@@ -2,7 +2,7 @@
 # @File: response.py
 # @Author: yaccii
 # @Time: 2025-11-07 11:38
-# @Description:
+# @Description: 前端统一响应
 from fastapi import status
 from fastapi.responses import JSONResponse
 

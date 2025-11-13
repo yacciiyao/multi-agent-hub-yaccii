@@ -4,7 +4,7 @@
 # @Time: 2025-11-07 11:40
 # @Description:
 from abc import ABC, abstractmethod
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List, Dict, Any
 
 from domain.message import Message
 from domain.rag import RagDocument, RagChunk
@@ -21,6 +21,10 @@ class IStorage(ABC):
     async def rename_session(self, user_id: int, session_id: str, new_name: str) -> None: ...
 
     @abstractmethod
+    async def update_session_flag(self, user_id: int, session_id: str,
+                                  rag_enabled: bool, stream_enabled: bool) -> None: ...
+
+    @abstractmethod
     async def get_session(self, user_id: int, session_id: str) -> Optional[Session]: ...
 
     @abstractmethod
@@ -34,7 +38,7 @@ class IStorage(ABC):
 
     # ------------- message -------------
     @abstractmethod
-    async def append_message(self, msg: Message) -> None: ...
+    async def append_message(self, message: Message) -> None: ...
 
     @abstractmethod
     async def get_messages(self, user_id: int, session_id: str) -> List[Message]: ...
@@ -50,8 +54,8 @@ class IStorage(ABC):
     async def delete_rag_document(self, user_id: int, doc_id: str) -> None: ...
 
     @abstractmethod
-    async def get_rag_chunks_with_embeddings(self, limit: int) -> List[Dict[str, Any]]: ...
-
+    async def get_rag_chunks_with_embeddings(self, scan_limit: int,
+                                             user_id: Optional[int] = None) -> List[Dict[str, Any]]: ...
 
     # ------------- default -------------
     @abstractmethod

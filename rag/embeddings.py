@@ -6,22 +6,23 @@
 import asyncio
 from typing import List, Iterable, TypeVar, Callable, Awaitable, Optional, Sequence
 
-
 from infrastructure.config_manager import config
 
 T = TypeVar("T")
+
 
 # ---------------- 工具 ----------------
 def _chunks(lst: List[str], size: int) -> Iterable[List[str]]:
     for i in range(0, len(lst), size):
         yield lst[i: i + size]
 
+
 async def _retry_async(
-    fn: Callable[[], Awaitable[T]],
-    *,
-    tries: int = 3,
-    base_delay: float = 0.8,
-    max_delay: float = 4.0,
+        fn: Callable[[], Awaitable[T]],
+        *,
+        tries: int = 3,
+        base_delay: float = 0.8,
+        max_delay: float = 4.0,
 ) -> T:
     last: Exception | None = None
     for attempt in range(1, tries + 1):
@@ -80,7 +81,7 @@ class Embeddings:
 
     async def _encode_openai(self, texts: Sequence[str]) -> List[List[float]]:
         try:
-            from openai import  AsyncOpenAI
+            from openai import AsyncOpenAI
         except Exception as e:
             raise RuntimeError(f"OpenAI is not installed: {e}")
 
@@ -119,7 +120,6 @@ class Embeddings:
             output.extend(await _retry_async(lambda: call_one(batch), tries=3))
 
         return output
-
 
     async def _encode_deepseek(self, texts: List[str]) -> List[List[float]]:
         try:

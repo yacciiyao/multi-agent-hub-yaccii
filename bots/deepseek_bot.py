@@ -2,7 +2,7 @@
 # @File: deepseek_bot.py
 # @Author: yaccii
 # @Time: 2025-11-09 11:37
-# @Description:
+# @Description: DeepSeek 模型
 import asyncio
 from typing import List, Dict, Union, AsyncIterator, Optional, Any, cast
 

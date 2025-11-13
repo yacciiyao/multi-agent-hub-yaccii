@@ -11,12 +11,13 @@ from domain.enums import Channel
 
 
 class Session(BaseModel):
-
     session_id: str
     user_id: int
     bot_name: str
-    channel: Channel = Channel.WEB
     session_name: Optional[str] = None
+    stream_enabled: bool = False
+    rag_enabled: bool = False
+    channel: Channel = Channel.WEB
     is_deleted: int = 0
     created_at: int = Field(default=0)
     updated_at: int = Field(default=0)
@@ -31,6 +32,8 @@ class Session(BaseModel):
             "bot_name": self.bot_name,
             "channel": getattr(self.channel, "value", str(self.channel)),
             "session_name": self.session_name,
+            "rag_enabled": bool(self.rag_enabled),
+            "stream_enabled": bool(self.stream_enabled),
             "is_deleted": bool(self.is_deleted),
             "created_at": self.created_at,
             "updated_at": self.updated_at,

@@ -12,13 +12,11 @@
             --border: #e5e7eb;
             --panel: #fff;
             --panel-2: #f8fafc;
-
             --green: #10b981;
             --green-50: #ecfdf5;
             --green-100: #d1fae5;
         }
 
-        /* 基础 */
         * {
             box-sizing: border-box
         }
@@ -31,10 +29,9 @@
             margin: 0;
             background: var(--bg);
             color: var(--text);
-            font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+            font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif
         }
 
-        /* 布局 */
         .app {
             display: flex;
             height: 100vh;
@@ -47,7 +44,7 @@
             background: var(--panel);
             border-right: 1px solid var(--border);
             display: flex;
-            flex-direction: column;
+            flex-direction: column
         }
 
         .main {
@@ -62,7 +59,7 @@
             align-items: center;
             gap: 10px;
             padding: 14px 16px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--border)
         }
 
         .brand img {
@@ -89,15 +86,15 @@
             background: #fff;
             color: var(--text);
             border-radius: 8px;
-            cursor: pointer;
+            cursor: pointer
         }
 
         .btn:hover {
-            filter: brightness(0.98)
+            filter: brightness(.98)
         }
 
         .btn:active {
-            transform: translateY(0.5px)
+            transform: translateY(.5px)
         }
 
         .btn.btn-green {
@@ -128,7 +125,7 @@
             background: #fff;
             border-radius: 10px;
             margin: 8px 0;
-            cursor: pointer;
+            cursor: pointer
         }
 
         .session-item:hover {
@@ -146,7 +143,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 13px
         }
 
         .session-actions {
@@ -155,7 +152,6 @@
         }
 
         .session-actions .btn-del {
-            /* 无边框的“×”图标按钮 */
             width: 22px;
             height: 22px;
             display: inline-flex;
@@ -169,19 +165,18 @@
             font-size: 16px;
             line-height: 1;
             border-radius: 6px;
-            transition: transform .15s ease, color .15s ease, background .15s ease;
+            transition: transform .15s, color .15s, background .15s
         }
 
         .session-actions .btn-del:hover {
             color: #ef4444;
-            background: #fee2e2;
+            background: #fee2e2
         }
 
         .session-actions .btn-del:active {
-            transform: scale(0.95);
+            transform: scale(.95)
         }
 
-        /* 工具栏 */
         .toolbar {
             display: flex;
             align-items: center;
@@ -189,40 +184,38 @@
             margin: 12px 10%;
             padding: 10px 56px;
             border-bottom: 1px solid var(--border);
-            background: #fff;
+            background: #fff
         }
 
         .toolbar .muted {
             color: var(--muted);
             font-size: 12px;
-            margin-left: 40%;
+            margin-left: 40%
         }
 
-        /* 聊天区 */
         .chat {
             flex: 1;
             overflow: auto;
             padding: 18px 20px 24px;
             background: #f6f6f6;
-            margin: 0 10%;
+            margin: 0 10%
         }
 
-        /* —— 消息行 —— */
         .msg {
             display: flex;
             gap: 10px;
             margin: 12px 0;
-            align-items: flex-start; /* 头像与气泡顶部齐平 */
+            align-items: flex-start
         }
 
         .msg .avatar {
             width: 40px;
             height: 40px;
-            border-radius: 8px; /* 轻微圆角，不是圆形 */
+            border-radius: 8px;
             border: 1px solid var(--border);
             background: #fff;
             overflow: hidden;
-            flex: 0 0 40px;
+            flex: 0 0 40px
         }
 
         .msg .avatar img {
@@ -231,19 +224,17 @@
             object-fit: cover
         }
 
-        /* 气泡 */
         .bubble {
             max-width: 760px;
             border: 1px solid var(--border);
             background: #fff;
-            border-radius: 10px; /* 轻微圆角 */
+            border-radius: 10px;
             padding: 10px 12px;
             word-break: break-word;
             white-space: pre-wrap;
-            box-shadow: 0 1px 0 rgba(0, 0, 0, .02);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, .02)
         }
 
-        /* 用户（右侧） */
         .msg.user {
             justify-content: flex-end
         }
@@ -256,10 +247,9 @@
         .msg.user .bubble {
             order: 1;
             background: var(--green-50);
-            border-color: #a7f3d0;
+            border-color: #95EC69
         }
 
-        /* 助手（左侧） */
         .msg.assistant {
             justify-content: flex-start
         }
@@ -273,10 +263,9 @@
             border-color: var(--border)
         }
 
-        /* 系统提示：灰色小字，无边框、无头像，居中窄行 */
         .msg.system {
             justify-content: center;
-            margin: 16px 0;
+            margin: 16px 0
         }
 
         .msg.system .bubble {
@@ -287,20 +276,18 @@
             font-size: 12px;
             padding: 0;
             max-width: 640px;
-            text-align: center;
+            text-align: center
         }
 
-        /* 代码块/预格式文本（可选） */
         .bubble pre {
             margin: 8px 0;
             padding: 10px;
             background: #f8fafc;
             border: 1px solid var(--border);
             border-radius: 8px;
-            overflow: auto;
+            overflow: auto
         }
 
-        /* 输入区（发送按钮在文本框内右下角悬浮） */
         .composer {
             position: relative;
             display: flex;
@@ -308,7 +295,7 @@
             padding: 20px 0;
             border-top: 1px solid var(--border);
             background: #fff;
-            margin: 0 10%;
+            margin: 0 10%
         }
 
         .composer textarea {
@@ -317,9 +304,9 @@
             resize: vertical;
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 12px 56px 12px 12px; /* 右侧为悬浮按钮留白 */
+            padding: 12px 56px 12px 12px;
             outline: none;
-            background: #fff;
+            background: #fff
         }
 
         .composer textarea:focus {
@@ -327,7 +314,6 @@
             box-shadow: 0 0 0 3px rgba(16, 185, 129, .15)
         }
 
-        /* 圆形悬浮发送按钮 */
         #send {
             position: absolute;
             right: 24px;
@@ -343,51 +329,66 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 6px 14px rgba(16, 185, 129, .25);
-            transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+            transition: transform .12s, filter .12s, box-shadow .12s
         }
 
         #send:hover {
             filter: brightness(.98);
-            box-shadow: 0 8px 18px rgba(16, 185, 129, .3);
+            box-shadow: 0 8px 18px rgba(16, 185, 129, .3)
         }
 
         #send:active {
-            transform: translateY(1px);
+            transform: translateY(1px)
         }
 
         #send svg {
             width: 18px;
-            height: 18px;
+            height: 18px
         }
 
-        /* RAG 来源块（简约） */
         .sources {
+            margin-top: 8px;
+            padding: 0
+        }
+
+        .sources-hd {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            user-select: none
+        }
+
+        .sources-toggle {
+            border: none;
+            background: transparent;
+            color: #047857;
+            font-size: 13px;
+            padding: 0;
+            cursor: pointer
+        }
+
+        .sources-count {
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .sources-body {
             margin-top: 8px;
             padding: 8px;
             background: #f8fafc;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 8px
         }
 
         .sources .source-item + .source-item {
-            margin-top: 6px;
+            margin-top: 6px
         }
 
-        .sources a {
-            color: #047857;
-            text-decoration: none;
-        }
-
-        .sources a:hover {
-            text-decoration: underline;
-        }
-
-        .sources .muted {
-            color: #6b7280;
-            font-size: 12px;
-        }
-
-        /* 滚动条（可选） */
         .chat::-webkit-scrollbar, .session-list::-webkit-scrollbar {
             width: 8px;
             height: 8px
@@ -402,7 +403,6 @@
             background: #d1d5db
         }
 
-        /* 自定义弹窗 */
         .modal-mask {
             position: fixed;
             inset: 0;
@@ -410,7 +410,7 @@
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            z-index: 9999
         }
 
         .modal {
@@ -419,18 +419,18 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             box-shadow: 0 12px 30px rgba(0, 0, 0, .12);
-            overflow: hidden;
+            overflow: hidden
         }
 
         .modal .hd {
             padding: 14px 16px;
             font-weight: 600;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--border)
         }
 
         .modal .bd {
             padding: 16px;
-            color: #374151;
+            color: #374151
         }
 
         .modal .ft {
@@ -438,7 +438,7 @@
             display: flex;
             gap: 10px;
             justify-content: flex-end;
-            border-top: 1px solid var(--border);
+            border-top: 1px solid var(--border)
         }
     </style>
 </head>
@@ -481,7 +481,7 @@
         <div id="chat" class="chat"></div>
 
         <div class="composer">
-            <textarea id="input" placeholder="输入消息，Shift+Enter 换行，Enter 发送"></textarea>
+            <textarea id="input" placeholder="输入消息, Shift+Enter 换行, Enter 发送"></textarea>
             <button id="send" aria-label="发送">
                 <svg viewBox="0 0 24 24" fill="none">
                     <path d="M3.5 11.5L20 4l-7.5 16-2-7-7-1.5Z" stroke="white" stroke-width="1.8"
@@ -550,12 +550,17 @@
         return ns.some(n => n.classList.contains("user") || n.classList.contains("assistant"));
     }
 
+    function stripRagBlock(text) {
+        if (!text) return "";
+        const re = /\[\[RAG_SOURCES\]\][\s\S]*?(\n```[\s\S]*?```)?/g;
+        return text.replace(re, "").trim();
+    }
+
     /** --------------- DOM 生成 --------------- */
     function msgBubble(role, text) {
         const wrap = ce("div", "msg " + role);
         const bubble = ce("div", "bubble");
-        bubble.textContent = text || "";
-
+        bubble.textContent = stripRagBlock(text || "");
         if (role === "assistant") {
             const av = ce("div", "avatar");
             const img = document.createElement("img");
@@ -572,7 +577,7 @@
             img.alt = "User";
             av.appendChild(img);
             wrap.appendChild(av);
-        } else { // system
+        } else {
             wrap.appendChild(bubble);
         }
         return wrap;
@@ -580,11 +585,27 @@
 
     function renderSources(container, sources) {
         if (!sources || !sources.length) return;
+
         const box = ce("div", "sources");
+        const hd = ce("div", "sources-hd");
+        const btn = ce("button", "sources-toggle");
+        const cnt = ce("span", "sources-count");
+        const bd = ce("div", "sources-body");
+
+        btn.type = "button";
+        btn.textContent = "展开数据来源";
+        cnt.textContent = `（${sources.length}）`;
+
+        hd.appendChild(btn);
+        hd.appendChild(cnt);
+        box.appendChild(hd);
+        box.appendChild(bd);
+
         sources.forEach((s, i) => {
             const line = ce("div", "source-item");
-            const title = s.title || `来源${i + 1}`;
+            const title = s.title || `来源 ${i + 1}`;
             const score = (typeof s.score === "number") ? `（${s.score}）` : "";
+
             if (s.url) {
                 const a = ce("a");
                 a.href = s.url;
@@ -597,17 +618,32 @@
                 span.textContent = title;
                 line.appendChild(span);
             }
-            const sp = ce("span", "score");
-            sp.textContent = score;
-            line.appendChild(sp);
+
+            if (score) {
+                const sp = ce("span", "score");
+                sp.textContent = score;
+                line.appendChild(sp);
+            }
+
             if (s.snippet) {
                 const sn = ce("div", "muted");
                 sn.style.marginTop = "2px";
                 sn.textContent = s.snippet;
                 line.appendChild(sn);
             }
-            box.appendChild(line);
+            bd.appendChild(line);
         });
+
+        bd.style.display = "none";
+        box.dataset.open = "0";
+
+        hd.addEventListener("click", () => {
+            const open = box.dataset.open === "1";
+            box.dataset.open = open ? "0" : "1";
+            bd.style.display = open ? "none" : "block";
+            btn.textContent = open ? "展开数据来源" : "收起数据来源";
+        });
+
         container.appendChild(box);
     }
 
@@ -655,8 +691,22 @@
         return (j.data && j.data.history) || [];
     }
 
-    async function apiPersistSystem(session_id, text, rag) {
-        await fetch(`${API}/messages/system?user_id=${USER_ID}&session_id=${encodeURIComponent(session_id)}&content=${encodeURIComponent(text)}${rag ? "&rag=1" : ""}`);
+    async function apiUpdateFlags(session_id, {rag_enabled, stream_enabled}) {
+        const r = await fetch(`${API}/sessions/update_flags`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                user_id: USER_ID,
+                session_id,
+                rag_enabled: !!rag_enabled,
+                stream_enabled: !!stream_enabled
+            })
+        });
+        try {
+            const j = await r.json();
+            if (j.code !== 0) console.warn("update_flags failed:", j.message);
+        } catch { /* 某些部署未返回JSON，也无需阻断 */
+        }
     }
 
     async function apiSendMessageJSON(session_id, role, content, rag_enabled) {
@@ -703,6 +753,17 @@
     /** --------------- 会话列表 --------------- */
     async function reloadSessions() {
         sessions = await apiListSessions();
+
+        const getTs = (s) => {
+            const v = s.updated_at ?? s.created_at ?? s.update_time ?? s.create_time ?? 0;
+            if (typeof v === "number") return v;
+            const n = Number(v);
+            if (!Number.isNaN(n)) return n;
+            const d = Date.parse(v);
+            return Number.isNaN(d) ? 0 : d;
+        };
+        sessions.sort((a, b) => getTs(b) - getTs(a));
+
         const box = $("#session-list");
         box.innerHTML = "";
         $("#btn-clear-all").style.display = sessions.length ? "inline-block" : "none";
@@ -740,6 +801,9 @@
 
                 const sel = document.getElementById("model-select");
                 if (sel && s.bot_name) sel.value = s.bot_name;
+
+                document.getElementById("ck-rag").checked = !!s.rag_enabled;
+                document.getElementById("ck-stream").checked = !!s.stream_enabled;
 
                 document.getElementById("chat").innerHTML = "";
                 await loadHistory(currentSessionId);
@@ -802,7 +866,7 @@
         sel.onchange = async () => {
             const newModel = sel.value;
             if (hasUserOrAssistant()) {
-                const ok = await uiConfirm("切换模型将新建一个会话。是否继续？");
+                const ok = await uiConfirm("切换模型将新建一个会话, 是否继续?");
                 if (!ok) {
                     sel.value = currentBotName;
                     return;
@@ -813,27 +877,14 @@
             currentSessionId = null;
             currentBotName = newModel;
             $("#chat").innerHTML = "";
-            insertSystemTip(`切换模型 ${newModel}，已创建本地新会话`);
+            insertSystemTip(`切换模型 ${newModel}, 已创建本地新会话`);
         };
     }
 
-    /** --------------- 系统提示：插入 + 持久化（若已有真实会话） --------------- */
+    /** --------------- 系统提示（仅UI，不持久化） --------------- */
     async function insertSystemTip(text) {
         $("#chat").appendChild(msgBubble("system", text));
         scrollBottom();
-        if (!pendingNew && currentSessionId) {
-            try {
-                await apiPersistSystem(currentSessionId, text, $("#ck-rag").checked);
-            } catch {
-            }
-        }
-    }
-
-    async function onFlagChanged() {
-        const isStream = $("#ck-stream").checked;
-        const isRag = $("#ck-rag").checked;
-        const text = `${isStream ? "已开启流式输出" : "已关闭流式输出"} / ${isRag ? "已开启RAG" : "已关闭RAG"}`;
-        await insertSystemTip(text);
     }
 
     /** --------------- 发送消息 --------------- */
@@ -877,6 +928,25 @@
             if (useStream) {
                 let full = "";
                 await apiSendMessageStream(sessionId, "user", text, useRag, (chunk) => {
+                    const marker = "[[RAG_SOURCES]]";
+                    if (chunk.includes(marker)) {
+                        const idx = chunk.indexOf(marker);
+                        const before = chunk.slice(0, idx);
+                        if (before) {
+                            full += before;
+                            bubble.textContent = full;
+                            scrollBottom();
+                        }
+                        const jsonStr = chunk.slice(idx + marker.length).trim();
+                        try {
+                            const meta = JSON.parse(jsonStr);
+                            const arr = Array.isArray(meta?.sources) ? meta.sources : [];
+                            if (arr.length) renderSources(bubble, arr);
+                        } catch (e) {
+                        }
+                        return;
+                    }
+
                     full += chunk;
                     bubble.textContent = full;
                     scrollBottom();
@@ -890,6 +960,7 @@
                 }
                 setStatus("就绪");
             }
+            await reloadSessions()
         } catch (e) {
             bubble.textContent = `【错误】${e.message || e}`;
             setStatus("出错");
@@ -904,16 +975,29 @@
             send();
         }
     });
+
     $("#btn-new").onclick = async () => {
+        const ok = await uiConfirm("确认新建会话？当前对话会保留在会话列表中。");
+        if (!ok) return;
+
+        // 若正在流式，尽量停止
+        if (streamingReader) {
+            try {
+                await streamingReader.cancel();
+            } catch (e) {
+            }
+        }
+
         const model = $("#model-select").value || models[0]?.bot_name;
         pendingNew = true;
         pendingBotName = model;
         currentSessionId = null;
         currentBotName = model;
         $("#chat").innerHTML = "";
-        insertSystemTip(`已创建新会话（模型：${model}）。`);
+        insertSystemTip(`已创建新会话（模型：${model}）`);
         renderSessionsActive();
     };
+
     $("#btn-clear-all").onclick = async () => {
         if (!await uiConfirm("确认清空全部会话？")) return;
         await apiDeleteAll();
@@ -925,8 +1009,24 @@
         $("#chat").innerHTML = "";
         renderSessionsActive();
     };
-    $("#ck-stream").onchange = onFlagChanged;
-    $("#ck-rag").onchange = onFlagChanged;
+
+    $("#ck-rag").addEventListener('change', async function () {
+        const v = this.checked;
+        insertSystemTip(v ? '已开启RAG' : '已关闭RAG');
+        if (!pendingNew && currentSessionId) {
+            const streamNow = document.getElementById("ck-stream").checked;
+            apiUpdateFlags(currentSessionId, {rag_enabled: v, stream_enabled: streamNow});
+        }
+    });
+
+    $("#ck-stream").addEventListener('change', async function () {
+        const v = this.checked;
+        insertSystemTip(v ? '已开启流式输出' : '已关闭流式输出');
+        if (!pendingNew && currentSessionId) {
+            const ragNow = document.getElementById("ck-rag").checked;
+            apiUpdateFlags(currentSessionId, {rag_enabled: ragNow, stream_enabled: v});
+        }
+    });
 
     /** --------------- 初始化 --------------- */
     (async function init() {

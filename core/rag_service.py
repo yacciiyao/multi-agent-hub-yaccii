@@ -31,7 +31,7 @@ class RagService:
         return self._storage
 
     async def ingest_from_url(
-        self, *, user_id: int, url: str, title: Optional[str], tags: Optional[List[str]], scope: str
+            self, *, user_id: int, url: str, title: Optional[str], tags: Optional[List[str]], scope: str
     ) -> str:
         got_title, content = await load_text_from_url(url)
         final_title = (title or got_title or url)[:255]
@@ -42,7 +42,7 @@ class RagService:
         )
 
     async def ingest_from_file(
-        self, *, user_id: int, file: UploadFile, title: Optional[str], tags: Optional[List[str]], scope: str
+            self, *, user_id: int, file: UploadFile, title: Optional[str], tags: Optional[List[str]], scope: str
     ) -> str:
         got_title, content = await load_text_from_upload_file(file)
         final_title = (title or got_title or file.filename or "Untitled")[:255]

@@ -30,7 +30,7 @@ class SearchRagRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=20)
 
 
-router = APIRouter()
+router = APIRouter(prefix="/rag", tags=["messages"])
 
 
 @router.post("/upload-url", summary="从 URL 导入（后台）")
@@ -51,13 +51,14 @@ async def upload_rag_from_url(body: UploadURLBody):
     except Exception as e:
         return failure(message=str(e))
 
+
 @router.post("/upload-file", summary="从文件导入（后台）")
 async def upload_rag_from_file(
-    user_id: int = Form(...),
-    title: Optional[str] = Form(None),
-    scope: str = Form("global"),
-    tags: Optional[str] = Form(None),  # 逗号分隔，或前端多选自行拼装
-    file: UploadFile = File(...),
+        user_id: int = Form(...),
+        title: Optional[str] = Form(None),
+        scope: str = Form("global"),
+        tags: Optional[str] = Form(None),  # 逗号分隔，或前端多选自行拼装
+        file: UploadFile = File(...),
 ):
     if user_id != 1:
         return failure(message="Forbidden: admin only")
@@ -76,9 +77,10 @@ async def upload_rag_from_file(
     except Exception as e:
         return failure(message=str(e))
 
+
 @router.get("/docs", summary="列出我的 RAG 文档")
 async def list_docs(
-    user_id: int = Query(..., description="用户ID"),
+        user_id: int = Query(..., description="用户ID"),
 ):
     rag_service = get_rag_service()
     try:
@@ -90,8 +92,8 @@ async def list_docs(
 
 @router.delete("/{doc_id}", summary="删除 RAG 文档（逻辑删除，后台使用）")
 async def delete_doc(
-    doc_id: str = Path(..., description="文档ID"),
-    user_id: int = Query(..., description="操作者用户ID"),
+        doc_id: str = Path(..., description="文档ID"),
+        user_id: int = Query(..., description="操作者用户ID"),
 ):
     rag_service = get_rag_service()
     try:

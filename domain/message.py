@@ -15,7 +15,7 @@ class RagSource(BaseModel):
     title: str
     url: Optional[str] = None
     snippet: Optional[str] = None
-    score: Optional[int] = None
+    score: Optional[float] = None
     meta: Dict[str, str] = Field(default_factory=dict)
 
 
@@ -24,6 +24,7 @@ class Message(BaseModel):
     role: Role
     content: str
     rag_enabled: bool = False
+    stream_enabled: bool = False
     sources: List[RagSource] = Field(default_factory=list)
     created_at: int = Field(default_factory=lambda: int(time.time()))
     is_deleted: bool = False
@@ -34,6 +35,7 @@ class Message(BaseModel):
             "role": getattr(self.role, "value", str(self.role)),
             "content": self.content,
             "rag_enabled": bool(self.rag_enabled),
+            "stream_enabled": bool(self.stream_enabled),
             "sources": [
                 (s.model_dump() if hasattr(s, "model_dump") else dict(s))
                 for s in (self.sources or [])

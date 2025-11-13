@@ -2,7 +2,7 @@
 # @File: qwen_bot.py
 # @Author: yaccii
 # @Time: 2025-11-09 13:02
-# @Description:
+# @Description: Qwen 模型
 import asyncio
 from typing import Optional, List, Dict, cast, Any, AsyncIterator, Union
 

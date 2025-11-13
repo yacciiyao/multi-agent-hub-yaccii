@@ -15,12 +15,12 @@
   "deepseek_max_token": 512,
 
   "claude_api_key": "",
-  "claude_base_url": "https://api.openai-proxy.org/anthropic",
+  "claude_base_url": "",
   "claude_default_model": "claude-haiku-4-5",
   "claude_max_token": 512,
 
   "gemini_api_key": "",
-  "gemini_base_url": "https://api.openai-proxy.org/google",
+  "gemini_base_url": "",
   "gemini_default_model": "gemini-2.5-flash",
   "gemini_max_token": 512,
 

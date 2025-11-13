@@ -11,6 +11,7 @@ class Channel(str, Enum):
     WECHAT = "wechat"
     DINGTALK = "dingtalk"
 
+
 class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"

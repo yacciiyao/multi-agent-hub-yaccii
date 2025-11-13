@@ -22,7 +22,6 @@ class RagDocument(DomainModel):
     is_deleted: int = 0
     created_at: int = Field(default_factory=lambda: int(time.time()))
     updated_at: int = Field(default_factory=lambda: int(time.time()))
-
     embed_provider: str
     embed_model: str
     embed_dim: int

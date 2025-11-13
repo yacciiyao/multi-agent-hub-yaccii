@@ -3,11 +3,6 @@
 # @Author: yaccii
 # @Time: 2025-11-09 23:10
 # @Description:
-# -*- coding: utf-8 -*-
-# @File: loader.py
-# @Author: yaccii
-# @Time: 2025-11-09 23:10
-# @Description:
 import io
 import json
 import re
@@ -53,7 +48,7 @@ def _unwrap_soft_linebreaks(text: str) -> str:
         nextc = m.group(2)
         if re.search(_SENT_END + r"$", prev):
             return prev + "\n" + nextc  # 真换行
-        return prev + " " + nextc      # 软换行 => 空格
+        return prev + " " + nextc  # 软换行 => 空格
 
     # 用占位捕获前后字符，避免误删段落空行
     text = re.sub(r"([^\n])\n([^\n])", _merge, text)
@@ -62,6 +57,7 @@ def _unwrap_soft_linebreaks(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
+
 
 def _normalize_newlines(text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -84,7 +80,7 @@ def _ensure_limit(text: str, limit: int, suffix: str = "\n\n[... truncated ...]"
 def _read_text_guess_encoding(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8", errors="strict")
-    except Exception:
+    except:
         try:
             import chardet
         except Exception as e:
@@ -264,7 +260,7 @@ async def load_text_from_upload_file(file: UploadFile, *, config: Optional[Loade
     raw = await file.read()
 
     if len(raw) > cfg.max_file_size_mb * 1024 * 1024:
-        raise ValueError(f"File too large: {(len(raw)/1024/1024):.1f}MB > {cfg.max_file_size_mb}MB")
+        raise ValueError(f"File too large: {(len(raw) / 1024 / 1024):.1f}MB > {cfg.max_file_size_mb}MB")
 
     if suffix in {".txt", ".log", ".md", ".rst"}:
         try:
@@ -284,7 +280,8 @@ async def load_text_from_upload_file(file: UploadFile, *, config: Optional[Loade
         except Exception as e:
             raise RuntimeError("Please install 'pandas' to parse CSV/TSV") from e
         sep = "," if suffix == ".csv" else "\t"
-        df = pd.read_csv(io.BytesIO(raw), sep=sep, nrows=cfg.csv_preview_rows, encoding="utf-8", engine="python", on_bad_lines="skip")
+        df = pd.read_csv(io.BytesIO(raw), sep=sep, nrows=cfg.csv_preview_rows, encoding="utf-8", engine="python",
+                         on_bad_lines="skip")
         if df.shape[1] > cfg.csv_preview_cols:
             df = df.iloc[:, : cfg.csv_preview_cols]
         buf = io.StringIO()

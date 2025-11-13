@@ -83,7 +83,7 @@ class BotRegistry:
                 return bot_cls(bot_name=bot_name)
             if "bot_name" in sig.parameters:
                 return bot_cls(bot_name=bot_name)
-            # 回退：尝试位置参数或无参
+
             try:
                 return bot_cls(bot_name)  # type: ignore[call-arg]
             except Exception:

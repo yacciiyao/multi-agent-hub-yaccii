@@ -2,14 +2,12 @@
 # @File: base_bot.py
 # @Author: yaccii
 # @Time: 2025-11-08 17:27
-# @Description:
+# @Description: 模型统一抽象基类
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union, AsyncIterator
 
 
 class BaseBot(ABC):
-    """模型统一抽象基类"""
-
     name = "unknow"
     bots: Dict[str, Dict] = {}
 
