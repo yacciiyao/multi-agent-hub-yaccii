@@ -107,6 +107,7 @@ web/chat.html
 - 系统提示：切换 `rag/stream` 时在消息流内插入提示。
 
 **效果图（示意）：**
+![接口展示](web/static/images/api.png)
 ![对话页面](web/static/images/frontend-chat.png)
 ![切换模型](web/static/images/switch-model.png)
 ![开启RAG](web/static/images/rag.png)
