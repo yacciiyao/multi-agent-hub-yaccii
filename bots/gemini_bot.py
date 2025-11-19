@@ -30,7 +30,7 @@ class GeminiBot(BaseBot):
         self.bot_name = bot_name or _config.get("gemini_default_model")
 
         if self.bot_name not in self.bots:
-            mlogger.warning(f"[GeminiBot] unknown model '{self.bot_name}', allowed: {', '.join(self.bots.keys())}")
+            mlogger.warning(self.__class__.__name__, "init", msg="unknown model", model=self.bot_name)
 
         api_key = _config.get("gemini_api_key")
         if not api_key:
@@ -88,7 +88,7 @@ class GeminiBot(BaseBot):
 
                 return ""
             except Exception as e:
-                mlogger.warning(f"[GeminiBot] Response error: {e}")
+                mlogger.warning(self.__class__.__name__, "chat completion", msg=e)
                 return ""
 
         return await asyncio.to_thread(_call)
@@ -163,7 +163,7 @@ class GeminiBot(BaseBot):
                     )
                     return True
                 except Exception as e:
-                    mlogger.warning(f"[GeminiBot] ping error: {e}")
+                    mlogger.warning(self.__class__.__name__, "healthcheck", msg=e)
                     return False
 
             return await asyncio.to_thread(_call)

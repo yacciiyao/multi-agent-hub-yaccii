@@ -35,7 +35,8 @@ class BotRegistry:
             try:
                 module = importlib.import_module(f"{pkg_name}.{mod.name}")
             except Exception as e:
-                mlogger.error(f"{pkg_name}.{mod.name} failed to import: {e}")
+                mlogger.exception(cls.__name__, "bot registry", msg=e, model=mod.name)
+
                 continue
 
             for _, obj in inspect.getmembers(module, inspect.isclass):
@@ -89,5 +90,5 @@ class BotRegistry:
             except Exception:
                 return bot_cls()  # type: ignore[call-arg]
         except Exception as e:
-            mlogger.error(f"Instantiate bot '{bot_name}' failed: {e}")
+            mlogger.error(cls.__name__, "get bot", msg=e, bot_name=bot_name)
             return None

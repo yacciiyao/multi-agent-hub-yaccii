@@ -31,9 +31,8 @@ class ConfigManager:
         self.loaded = False
 
     def load(self):
-        """从 JSON 文件加载配置"""
         if self.loaded:
-            mlogger.info("[ConfigManager] 配置已加载，跳过。")
+            mlogger.info(self.__class__.__name__, "load config", msg="success")
             return
 
         if not os.path.exists(self.CONFIG_PATH):
@@ -43,7 +42,6 @@ class ConfigManager:
             self._config = json.load(f)
 
         self.loaded = True
-        mlogger.info(f"[ConfigManager] 当前配置: {self._config}")
 
     def as_dict(self) -> Dict[str, Any]:
         """返回配置字典"""

@@ -68,7 +68,7 @@ class MessageService:
         # RAG
         sources: List[RagSource] = []
         if message.rag_enabled:
-            rag_reply = await self._rag.semantic_search(user_id=user_id, query=message.content or "")
+            rag_reply = await self._rag.semantic_search(query=message.content or "")
             if rag_reply:
                 lines: List[str] = []
                 for i, r in enumerate(rag_reply, 1):

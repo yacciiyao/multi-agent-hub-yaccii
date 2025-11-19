@@ -27,7 +27,7 @@ class ClaudeBot(BaseBot):
         self.bot_name = bot_name or _config.get("claude_default_model")
 
         if self.bot_name not in self.bots:
-            mlogger.warning(f"[ClaudeBot] unknown model '{self.bot_name}', allowed: {', '.join(self.bots.keys())}")
+            mlogger.warning(self.__class__.__name__, "init", msg="unknown model", model=self.bot_name)
 
         api_key = _config.get("claude_api_key")
         if not api_key:
@@ -131,7 +131,7 @@ class ClaudeBot(BaseBot):
                         pass
                     elif et == "error":
                         err = getattr(ev, "error", None)
-                        mlogger.error(f"[ClaudeBot] stream error: {err}")
+                        mlogger.error(self.__class__.__name__, "stream generator", msg=err)
                         yield f"[ERROR]: {err}"
                         return
                 # flush 残余

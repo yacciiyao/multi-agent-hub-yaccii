@@ -7,9 +7,9 @@ from typing import Optional
 
 from infrastructure.config_manager import config
 from infrastructure.mlogger import mlogger
-from storage.base import IStorage
-from storage.memory_storage import MemoryStorage
-from storage.mysql_storage import MySQLStorage
+from storage.storage_base import IStorage
+from storage.storage_memory import MemoryStorage
+from storage.storage_mysql import MySQLStorage
 
 
 class StorageManager:
@@ -26,7 +26,7 @@ class StorageManager:
 
     async def init(self):
         if self.initialized:
-            mlogger.info("[StorageManager] 已初始化")
+            mlogger.info(self.__class__.__name__, "init", msg="success")
             return
 
         cfg = config.as_dict()
@@ -52,9 +52,9 @@ class StorageManager:
         if self.backend:
             try:
                 await self.backend.close()
-                mlogger.info("[StorageManager] 已关闭存储连接。")
+                mlogger.info(self.__class__.__name__, "close", msg="success")
             except Exception as e:
-                mlogger.warning(f"[StorageManager] 关闭异常: {e}")
+                mlogger.exception(self.__class__.__name__, "close", msg=e)
 
 
 # === 全局单例 ===

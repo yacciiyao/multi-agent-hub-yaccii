@@ -28,7 +28,7 @@ class OpenAIBot(BaseBot):
         self.bot_name = bot_name or _config.get("openai_default_model")
 
         if self.bot_name not in self.bots:
-            mlogger.warning(f"[OpenAIBot] unknown model '{self.bot_name}', allowed: {', '.join(self.bots.keys())}")
+            mlogger.warning(self.__class__.__name__, "init", msg="unknown model", model=self.bot_name)
 
         api_key = _config.get("openai_api_key")
         if not api_key:
@@ -43,7 +43,7 @@ class OpenAIBot(BaseBot):
         try:
             await self.client.close()
         except Exception as e:
-            mlogger.warning(f"[OpenAIBot] Failed to close the OpenAIBot instance: {e}")
+            mlogger.warning(self.__class__.__name__, "close model", msg=e)
 
     @staticmethod
     def _to_messages(messages: List[Dict[str, str]]) -> List[Dict[str, Any]]:
@@ -109,7 +109,8 @@ class OpenAIBot(BaseBot):
                     elif event_type == "response.error" or event_type == "error":
                         error = getattr(event, "error", None)
                         message = getattr(error, "message", None) if error else None
-                        mlogger.error(f"[OpenAIBot] stream message: {message}]")
+                        mlogger.error(self.__class__.__name__, "stream generator", msg=message)
+
                         yield f"[Error]: {message}]"
                         return
 

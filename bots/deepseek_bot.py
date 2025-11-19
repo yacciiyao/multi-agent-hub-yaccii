@@ -26,7 +26,7 @@ class DeepSeekBot(BaseBot):
         self.bot_name = bot_name or _config.get("deepseek_default_model")
 
         if self.bot_name not in self.bots:
-            mlogger.warning(f"[DeepSeekBot] unknown model '{self.bot_name}', allowed: {', '.join(self.bots.keys())}")
+            mlogger.warning(self.__class__.__name__, "init", msg="unknown model", model=self.bot_name)
 
         api_key = _config.get("deepseek_api_key")
         if not api_key:
@@ -41,7 +41,7 @@ class DeepSeekBot(BaseBot):
         try:
             await self.client.close()
         except Exception as e:
-            mlogger.warning(f"[DeepSeekBot] Failed to close the DeepSeekBot instance: {e}")
+            mlogger.warning(self.__class__.__name__, "close model", msg=e)
 
     @staticmethod
     def _to_messages(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -96,7 +96,7 @@ class DeepSeekBot(BaseBot):
                         continue
 
                 except Exception as e:
-                    mlogger.warning(f"[DeepSeekBot] Stream generator error: {e}")
+                    mlogger.warning(self.__class__.__name__, "stream generator", msg=e)
                     continue
 
                 buffer += delta

@@ -11,7 +11,6 @@ from infrastructure.config_manager import config
 T = TypeVar("T")
 
 
-# ---------------- 工具 ----------------
 def _chunks(lst: List[str], size: int) -> Iterable[List[str]]:
     for i in range(0, len(lst), size):
         yield lst[i: i + size]

@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-# @File: base.py
+# @File: storage_base.py
 # @Author: yaccii
 # @Time: 2025-11-07 11:40
 # @Description:
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from domain.message import Message
-from domain.rag import RagDocument, RagChunk
 from domain.session import Session
 
 
@@ -42,20 +41,6 @@ class IStorage(ABC):
 
     @abstractmethod
     async def get_messages(self, user_id: int, session_id: str) -> List[Message]: ...
-
-    # ------------- rag -------------
-    @abstractmethod
-    async def upsert_rag_document(self, doc: RagDocument, chunks: List[RagChunk]) -> None: ...
-
-    @abstractmethod
-    async def list_rag_documents(self, user_id: int) -> List[RagDocument]: ...
-
-    @abstractmethod
-    async def delete_rag_document(self, user_id: int, doc_id: str) -> None: ...
-
-    @abstractmethod
-    async def get_rag_chunks_with_embeddings(self, scan_limit: int,
-                                             user_id: Optional[int] = None) -> List[Dict[str, Any]]: ...
 
     # ------------- default -------------
     @abstractmethod

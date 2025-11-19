@@ -59,9 +59,9 @@
 │  ├─ message_router.py      # /messages/* 相关接口
 │  └─ session_router.py      # /sessions/* 相关接口
 ├─ storage/                  # 存储实现
-│  ├─ base.py                # IStorage 接口定义
-│  ├─ mysql_storage.py       # MySQL 存储实现
-│  └─ memory_storage.py      # 内存存储实现
+│  ├─ storage_base.py                # IStorage 接口定义
+│  ├─ storage_mysql.py       # MySQL 存储实现
+│  └─ storage_memory.py      # 内存存储实现
 ├─ web/
 │  └─ chat.html              # 原生 DOM 前端单页
 ├─ config_template.json      # 配置模板（需复制为 config.json）

@@ -33,7 +33,7 @@ class SearchRagRequest(BaseModel):
 router = APIRouter(prefix="/rag", tags=["messages"])
 
 
-@router.post("/upload-url", summary="从 URL 导入（后台）")
+@router.post("/upload_url", summary="从 URL 导入（后台）")
 async def upload_rag_from_url(body: UploadURLBody):
     # 临时“管理员”判断：user_id==1 才允许
     if body.user_id != 1:
@@ -52,7 +52,7 @@ async def upload_rag_from_url(body: UploadURLBody):
         return failure(message=str(e))
 
 
-@router.post("/upload-file", summary="从文件导入（后台）")
+@router.post("/upload_file", summary="从文件导入（后台）")
 async def upload_rag_from_file(
         user_id: int = Form(...),
         title: Optional[str] = Form(None),

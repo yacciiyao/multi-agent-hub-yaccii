@@ -1,7 +1,7 @@
 {
   "openai_api_key": "",
   "openai_base_url": "",
-  "openai_default_model": "gpt-3.5-turbo",
+  "openai_default_model": "",
   "openai_max_token": 512,
 
   "qwen_api_key": "",
@@ -11,17 +11,17 @@
 
   "deepseek_api_key": "",
   "deepseek_base_url": "",
-  "deepseek_default_model": "deepseek-chat",
+  "deepseek_default_model": "",
   "deepseek_max_token": 512,
 
   "claude_api_key": "",
   "claude_base_url": "",
-  "claude_default_model": "claude-haiku-4-5",
+  "claude_default_model": "",
   "claude_max_token": 512,
 
   "gemini_api_key": "",
   "gemini_base_url": "",
-  "gemini_default_model": "gemini-2.5-flash",
+  "gemini_default_model": "",
   "gemini_max_token": 512,
 
   "storage": "mysql",
@@ -32,21 +32,36 @@
     "password": "",
     "database": ""
   },
-
-  "max_sessions": 100,
-  "max_messages_count": 100,
-  "max_messages_length": 100,
+  "max_sessions": 10,
+  "max_messages_count": 10,
+  "max_messages_length": 1000,
 
   "embedding": {
-    "provider": "openai",
-    "model": "text-embedding-3-small",
+    "provider": "",
+    "model": "",
+    "dim": 1536,
     "batch_size": 64,
-    "version": 1,
-    "max_chunks_scan": 5000
+    "version": 1
   },
-  "rag_split": {
-    "target_tokens": 400,
-    "max_tokens": 800,
-    "sentence_overlap": 2
+
+  "rag": {
+    "enabled": true,
+    "backend": "milvus",
+    "top_k": 5,
+
+    "faiss": {
+      "index_dir": "data/vector_store/faiss",
+      "top_k_raw": 20
+    },
+
+    "milvus": {
+      "mode": "",
+      "collection": "",
+      "dim": 1536,
+      "zilliz_uri": "",
+      "zilliz_token": "",
+      "host": "127.0.0.1",
+      "port": 19530
+    }
   }
 }

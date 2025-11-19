@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @File: mysql_storage.py
+# @File: storage_mysql.py
 # @Author: yaccii
 # @Time: 2025-11-07 12:39
 # @Description:
@@ -8,16 +8,15 @@ import json
 import struct
 import time
 from contextlib import asynccontextmanager
-from typing import Optional, List, Dict, Tuple, Any
+from typing import Optional, List
 
 import aiomysql
 
 from domain.enums import Role
 from domain.message import Message, RagSource
-from domain.rag import RagChunk, RagDocument
 from domain.session import Session
 from infrastructure.mlogger import mlogger
-from storage.base import IStorage
+from storage.storage_base import IStorage
 
 MYSQL_RETRY_ERRORS = {2006, 2013}
 
@@ -40,7 +39,7 @@ class MySQLStorage(IStorage):
         )
 
         await self._ensure_tables()
-        mlogger.info("[MySQLStorage] 连接池初始化完成。")
+        mlogger.info(self.__class__.__name__, "init", msg="success")
 
     async def close(self):
         if self.pool:
@@ -195,179 +194,6 @@ class MySQLStorage(IStorage):
         )
         return [self._row_to_message(r) for r in rows]
 
-    async def upsert_rag_document(self, doc: RagDocument, chunks: List[RagChunk]) -> None:
-        await self._execute(
-            """
-            INSERT INTO rag_documents
-              (doc_id,user_id,title,source,url,tags,scope,is_deleted,created_at,updated_at,
-               embed_provider,embed_model,embed_dim,embed_version,split_params,preprocess_flags)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,0,%s,%s,%s,%s,%s,%s,%s,%s)
-            ON DUPLICATE KEY UPDATE
-              title=VALUES(title),
-              url=VALUES(url),
-              tags=VALUES(tags),
-              scope=VALUES(scope),
-              embed_provider=VALUES(embed_provider),
-              embed_model=VALUES(embed_model),
-              embed_dim=VALUES(embed_dim),
-              embed_version=VALUES(embed_version),
-              split_params=VALUES(split_params),
-              preprocess_flags=VALUES(preprocess_flags),
-              updated_at=VALUES(updated_at),
-              is_deleted=0
-            """,
-            (
-                doc.doc_id,
-                doc.user_id,
-                doc.title,
-                doc.source,
-                doc.url,
-                json.dumps(doc.tags, ensure_ascii=False),
-                doc.scope,
-                doc.created_at,
-                doc.updated_at,
-                doc.embed_provider,
-                doc.embed_model,
-                doc.embed_dim,
-                doc.embed_version,
-                json.dumps(doc.split_params, ensure_ascii=False),
-                doc.preprocess_flags,
-            ),
-            fetch=False,
-        )
-
-        await self._execute("DELETE FROM rag_chunks WHERE doc_id=%s", (doc.doc_id,), fetch=False)
-
-        if chunks:
-            sql = """
-                INSERT INTO rag_chunks
-                  (doc_id,user_id,chunk_index,content,embedding,created_at,is_deleted)
-                VALUES (%s,%s,%s,%s,%s,%s,0)
-            """
-            args: List[tuple] = []
-            for c in chunks:
-                blob = self._vector_to_blob(c.embedding) if c.embedding else None
-                args.append((c.doc_id, c.user_id, c.chunk_index, c.content, blob, c.created_at))
-
-            BATCH = 512
-            async with self.pool.acquire() as conn:
-                async with conn.cursor() as cursor:
-                    for i in range(0, len(args), BATCH):
-                        part = args[i: i + BATCH]
-                        await cursor.executemany(sql, part)
-
-    async def list_rag_documents(self, user_id: int) -> List[RagDocument]:
-        rows = await self._execute(
-            """
-            SELECT doc_id,user_id,title,source,url,tags,scope,is_deleted,created_at,updated_at,
-                   embed_provider,embed_model,embed_dim,embed_version,split_params,preprocess_flags
-              FROM rag_documents
-             WHERE is_deleted=0 AND user_id=%s
-             ORDER BY updated_at DESC
-            """,
-            (user_id,),
-        )
-        output: List[RagDocument] = []
-        for r in rows:
-            output.append(
-                RagDocument(
-                    doc_id=r["doc_id"],
-                    user_id=int(r["user_id"]),
-                    title=r["title"],
-                    source=r["source"],
-                    url=r["url"],
-                    tags=json.loads(r["tags"] or "[]"),
-                    scope=r["scope"],
-                    is_deleted=int(r["is_deleted"]),
-                    created_at=int(r["created_at"]),
-                    updated_at=int(r["updated_at"]),
-                    embed_provider=r["embed_provider"],
-                    embed_model=r["embed_model"],
-                    embed_dim=int(r["embed_dim"]),
-                    embed_version=int(r["embed_version"]),
-                    split_params=json.loads(r["split_params"] or "{}"),
-                    preprocess_flags=r.get("preprocess_flags") or "",
-                )
-            )
-        return output
-
-    async def delete_rag_document(self, user_id: int, doc_id: str) -> None:
-        await self._execute(
-            "UPDATE rag_documents SET is_deleted=1 WHERE user_id=%s AND doc_id=%s AND is_deleted=0",
-            (user_id, doc_id),
-            fetch=False,
-        )
-        await self._execute(
-            "UPDATE rag_chunks SET is_deleted=1 WHERE doc_id=%s AND is_deleted=0",
-            (doc_id,),
-            fetch=False,
-        )
-
-    async def get_rag_chunks_with_embeddings(
-            self,
-            *,
-            scan_limit: int,
-            user_id: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Scan chunks with embeddings. When user_id is provided, only global
-        documents and the user's private documents are returned.
-        """
-        where = ["c.is_deleted=0", "d.is_deleted=0", "c.embedding IS NOT NULL"]
-        args: List[Any] = []
-        if user_id is not None:
-            where.append("(d.scope='global' OR (d.scope='private' AND d.user_id=%s))")
-            args.append(int(user_id))
-        else:
-            where.append("d.scope='global'")
-
-        where_sql = " AND ".join(where)
-        sql_ids = f"""
-            SELECT c.id
-              FROM rag_chunks c
-              JOIN rag_documents d ON d.doc_id = c.doc_id
-             WHERE {where_sql}
-             ORDER BY c.id ASC
-             LIMIT %s
-        """
-        rows_ids = await self._execute(sql_ids, tuple(args + [int(scan_limit)]))
-        if not rows_ids:
-            return []
-
-        id_list = [r["id"] for r in rows_ids]
-        placeholders = ",".join(["%s"] * len(id_list))
-        sql_data = f"""
-            SELECT c.id, c.doc_id, c.user_id, c.chunk_index,
-                   c.content, c.embedding, c.created_at,
-                   d.title, d.url
-              FROM rag_chunks c
-              JOIN rag_documents d ON d.doc_id = c.doc_id
-             WHERE c.id IN ({placeholders})
-             ORDER BY FIELD(c.id, {",".join(["%s"] * len(id_list))})
-        """
-        rows = await self._execute(sql_data, tuple(id_list + id_list))
-
-        output: List[Dict[str, Any]] = []
-        for r in rows:
-            embedding = None
-            blob = r.get("embedding")
-            if blob:
-                n = len(blob) // 4
-                embedding = list(struct.unpack(f"<{n}f", blob))
-            output.append(
-                {
-                    "doc_id": r["doc_id"],
-                    "user_id": int(r["user_id"]),
-                    "chunk_index": int(r["chunk_index"]),
-                    "content": r["content"],
-                    "embedding": embedding,
-                    "created_at": int(r["created_at"]),
-                    "title": r.get("title"),
-                    "url": r.get("url"),
-                }
-            )
-        return output
-
     async def _execute(self, sql: str, params: tuple = (), fetch: bool = True):
         if not self.pool:
             raise RuntimeError("MySQL pool not initialized")
@@ -379,7 +205,7 @@ class MySQLStorage(IStorage):
                 return None
         except Exception as e:
             if getattr(e, "args", None) and e.args and e.args[0] in MYSQL_RETRY_ERRORS:
-                mlogger.warning(f"[MySQLStorage] retry once due to connection error: {e}")
+                mlogger.exception(self.__class__.__name__, "exception occurred", msg=e, sql=sql, params=params)
                 async with self._conn_cursor() as (_, cursor):
                     await cursor.execute(sql, params)
                     if fetch:
@@ -413,7 +239,7 @@ class MySQLStorage(IStorage):
                 `channel`        VARCHAR ( 20 )  NOT NULL,
                 `rag_enabled`    TINYINT                  DEFAULT '0',
                 `stream_enabled` TINYINT                  DEFAULT '0',
-                `is_deleted`     TINYINT ( 1 )   NOT NULL DEFAULT '0',
+                `is_deleted`     TINYINT         NOT NULL DEFAULT '0',
                 `created_at`     INT UNSIGNED    NOT NULL,
                 `updated_at`     INT             NOT NULL,
                 PRIMARY KEY ( `session_id` ),
@@ -440,61 +266,13 @@ class MySQLStorage(IStorage):
             ) ENGINE = INNODB DEFAULT CHARSET = utf8mb4
         """
 
-        rag_doc_sql = """
-            CREATE TABLE IF NOT EXISTS rag_documents (
-              doc_id           VARCHAR(64)  NOT NULL,
-              user_id          INT          NOT NULL,
-              title            VARCHAR(255) NOT NULL,
-              source           VARCHAR(32)  NOT NULL DEFAULT 'upload',
-              url              VARCHAR(1024),
-              tags             JSON,
-              scope            VARCHAR(16)  NOT NULL DEFAULT 'global',
-              is_deleted       TINYINT(1)   NOT NULL DEFAULT 0,
-              created_at       INT          NOT NULL,
-              updated_at       INT          NOT NULL,
-
-              embed_provider   VARCHAR(32)  NOT NULL,
-              embed_model      VARCHAR(64)  NOT NULL,
-              embed_dim        INT          NOT NULL,
-              embed_version    INT          NOT NULL DEFAULT 1,
-              split_params     JSON,
-              preprocess_flags VARCHAR(128),
-
-              PRIMARY KEY (doc_id),
-              KEY idx_user (user_id),
-              KEY idx_deleted (is_deleted),
-              KEY idx_updated (updated_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """
-
-        rag_chunk_sql = """
-            CREATE TABLE IF NOT EXISTS rag_chunks (
-              id           BIGINT       NOT NULL AUTO_INCREMENT,
-              doc_id       VARCHAR(64)  NOT NULL,
-              user_id      INT          NOT NULL,
-              chunk_index  INT          NOT NULL,
-              content      MEDIUMTEXT   NOT NULL,
-              embedding    BLOB         NULL,
-              created_at   INT          NOT NULL,
-              is_deleted   TINYINT(1)   NOT NULL DEFAULT 0,
-              PRIMARY KEY (id),
-              KEY idx_doc (doc_id),
-              KEY idx_user (user_id),
-              CONSTRAINT fk_rag_chunk_doc FOREIGN KEY (doc_id)
-                REFERENCES rag_documents(doc_id) ON DELETE CASCADE ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """
-
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(session_sql)
                 await cursor.execute(message_sql)
-                await cursor.execute(rag_doc_sql)
-                await cursor.execute(rag_chunk_sql)
                 try:
                     await cursor.execute(
-                        "CREATE INDEX idx_user_del_updated ON chat_sessions(user_id, is_deleted, updated_at)"
-                    )
+                        "CREATE INDEX idx_user_del_updated ON chat_sessions(user_id, is_deleted, updated_at)")
                 except Exception:
                     pass
 
