@@ -64,7 +64,7 @@ def create_app() -> FastAPI:
 
     # 静态文件
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    STATIC_DIR = os.path.join(BASE_DIR, "../web/static")
+    STATIC_DIR = os.path.join(BASE_DIR, "../web")
     app.mount("/", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.get("/")

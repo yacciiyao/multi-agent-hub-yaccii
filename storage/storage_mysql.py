@@ -48,8 +48,8 @@ class MySQLStorage(IStorage):
 
     async def create_session(self, session: Session) -> None:
         sql = """
-            INSERT INTO chat_sessions (session_id, user_id, bot_name, agent_key, channel, session_name, 
-            rag_enabled, stream_enabled, is_deleted, created_at, updated_at)
+            INSERT INTO chat_sessions (session_id,user_id,bot_name,agent_key,channel,rag_enabled,
+                stream_enabled,is_deleted,created_at,updated_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, 0, %s, %s)
         """
         now = int(time.time())
@@ -63,11 +63,10 @@ class MySQLStorage(IStorage):
                 session.bot_name,
                 session.agent_key,
                 getattr(session.channel, "value", str(session.channel)),
-                session.session_name,
                 int(getattr(session, "rag_enabled", False)),
                 int(getattr(session, "stream_enabled", False)),
                 created_at,
-                updated_at,
+                updated_at
             ),
             fetch=False,
         )
