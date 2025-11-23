@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @File: storage_mysql.py
+# @File: data_storage_mysql.py
 # @Author: yaccii
 # @Time: 2025-11-07 12:39
 # @Description:
@@ -8,7 +8,7 @@ import json
 import struct
 import time
 from contextlib import asynccontextmanager
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 import aiomysql
 
@@ -16,12 +16,12 @@ from domain.enums import Role
 from domain.message import Message, RagSource, Attachment
 from domain.session import Session
 from infrastructure.mlogger import mlogger
-from storage.storage_base import IStorage
+from storage.data_storage_base import DStorage
 
 MYSQL_RETRY_ERRORS = {2006, 2013}
 
 
-class MySQLStorage(IStorage):
+class MySQLStorage(DStorage):
     def __init__(self, config):
         self.config = config
         self.pool: Optional[aiomysql.Pool] = None
@@ -45,6 +45,27 @@ class MySQLStorage(IStorage):
         if self.pool:
             self.pool.close()
             await self.pool.wait_closed()
+
+    async def fetch_all(self, sql: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        if not self.pool:
+            raise RuntimeError("MySQL pool not initialized")
+
+        if not params:
+            rows = await self._execute(sql, (), fetch=True)
+            return list(rows or [])
+
+        # 将 :name 替换为 %s，并按 params 的顺序构造参数 tuple
+        ordered_values: List[Any] = []
+        sql_converted = sql
+
+        for key, value in params.items():
+            placeholder = f":{key}"
+            if placeholder in sql_converted:
+                sql_converted = sql_converted.replace(placeholder, "%s")
+                ordered_values.append(value)
+
+        rows = await self._execute(sql_converted, tuple(ordered_values), fetch=True)
+        return list(rows or [])
 
     async def create_session(self, session: Session) -> None:
         sql = """
@@ -298,15 +319,19 @@ class MySQLStorage(IStorage):
 
     @staticmethod
     def _row_to_message(row: dict) -> Message:
-        sources_str = row["sources"] or "[]"
+        # sources
+        sources_str = row.get("sources") or "[]"
         try:
             sources_list = json.loads(sources_str)
             sources = [RagSource(**s) for s in sources_list]
         except Exception:
             sources = []
 
-        role_val = row.get("role", "other")
-        role = Role(role_val) if role_val in (Role.USER.value, Role.ASSISTANT.value, Role.SYSTEM.value) else Role.SYSTEM
+        role_val = row.get("role", Role.SYSTEM.value)
+        try:
+            role = Role(role_val)
+        except Exception:
+            role = Role.SYSTEM
 
         def to_bool(v, default=False):
             try:
@@ -314,9 +339,17 @@ class MySQLStorage(IStorage):
             except (ValueError, TypeError):
                 return default
 
-        raw = row["attachments"]
-        data = json.loads(raw)
-        attachments = [Attachment(**item) for item in data]
+        raw = row.get("attachments")
+        attachments: List[Attachment] = []
+        if raw:
+            try:
+                if isinstance(raw, (bytes, bytearray)):
+                    raw = raw.decode("utf-8")
+                data = json.loads(raw)
+                if isinstance(data, list):
+                    attachments = [Attachment(**item) for item in data]
+            except Exception:
+                attachments = []
 
         return Message(
             session_id=row["session_id"],
@@ -324,10 +357,10 @@ class MySQLStorage(IStorage):
             content=row.get("content", ""),
             attachments=attachments,
             rag_enabled=to_bool(row.get("rag_enabled"), False),
+            stream_enabled=to_bool(row.get("stream_enabled"), False),  # type: ignore
             sources=sources,
             created_at=int(row.get("created_at", 0)),
             is_deleted=bool(int(row.get("is_deleted", 0))),
-            stream_enabled=to_bool(row.get("stream_enabled"), False),  # type: ignore
         )
 
     @staticmethod

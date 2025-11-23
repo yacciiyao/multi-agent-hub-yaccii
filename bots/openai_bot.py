@@ -17,11 +17,10 @@ from infrastructure.mlogger import mlogger
 class OpenAIBot(BaseBot):
     name = "OpenAI"
     bots = {
-        "gpt-3.5-turbo": {"desc": "经典稳定版，适合常规任务", "allow_image": False},
-        "gpt-4o-mini": {"desc": "轻量快速版 GPT-4", "allow_image": True},
-        "gpt-4o": {"desc": "旗舰多模态模型", "allow_image": True},
-        "gpt-5-mini": {"desc": "兼顾速度、成本和能力", "allow_image": True},
-        "gpt-5.1-2025-11-13": {"desc": "兼顾速度、成本和能力", "allow_image": True},
+        "gpt-4.1-mini": {"desc": "默认推荐：轻量多模态模型，性价比最高，适合日常对话和数据分析", "allow_image": True},
+        "gpt-4.1": {"desc": "高质量多模态旗舰模型，适合复杂品牌/项目分析和长篇报告生成", "allow_image": True},
+        "o3-mini": {"desc": "强化推理模型，适合复杂打分、排序逻辑和代码类任务", "allow_image": True},
+        "gpt-4o-mini": {"desc": "多模态轻量版，成本更低，可作为备选或大规模批量任务模型", "allow_image": True},
     }
 
     def __init__(self, bot_name: Optional[str] = None, **kwargs):
@@ -134,24 +133,6 @@ class OpenAIBot(BaseBot):
             return True
         except (OpenAIError, asyncio.TimeoutError):
             return False
-
-    async def _chat_completion_parts(self, parts: List[Dict[str, Any]]) -> str:
-        response = await self.client.responses.create(
-            model=self.bot_name,
-            input=cast(Any, parts),
-            max_output_tokens=self._max_token,
-        )
-
-        text = getattr(response, "output_text", None)
-        if text:
-            return text
-
-        chunks: List[str] = []
-        for output in getattr(response, "output", []) or []:
-            if getattr(output, "type", "") == "output_text":
-                chunks.append(getattr(output, "content", "") or "")
-
-        return "".join(chunks) if chunks else ""
 
     async def chat_with_attachments(
             self,

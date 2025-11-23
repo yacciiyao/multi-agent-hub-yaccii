@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @File: storage_base.py
+# @File: base.py
 # @Author: yaccii
 # @Time: 2025-11-08 16:42
 # @Description: 模型基类, 禁止额外字段, 允许复杂类型

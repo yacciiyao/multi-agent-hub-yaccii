@@ -22,7 +22,7 @@ class VectorSearchResult:
     metadata: Dict[str, Any]
 
 
-class IStore(ABC):
+class VStore(ABC):
     @abstractmethod
     def upsert_document(
             self,

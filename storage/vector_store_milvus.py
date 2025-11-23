@@ -17,24 +17,24 @@ from pymilvus import (
     DataType,
 )
 
-from .vector_store_base import IStore, VectorSearchResult
+from storage.vector_store_base import VStore, VectorSearchResult
 
 
-class MilvusVectorStore(IStore):
+class MilvusVectorStore(VStore):
     """
     基于 Milvus / Zilliz 向量库：
     - collection字段: doc_id/chunk_index/user_id/title/url/content/scope/tags/embedding
     """
 
     def __init__(
-        self,
-        mode: str,
-        collection_name: str,
-        dim: int,
-        zilliz_uri: Optional[str] = None,
-        zilliz_token: Optional[str] = None,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
+            self,
+            mode: str,
+            collection_name: str,
+            dim: int,
+            zilliz_uri: Optional[str] = None,
+            zilliz_token: Optional[str] = None,
+            host: Optional[str] = None,
+            port: Optional[int] = None,
     ) -> None:
         self.collection_name = collection_name
         self.dim = dim
@@ -64,15 +64,15 @@ class MilvusVectorStore(IStore):
         self._col.load()
 
     def upsert_document(
-        self,
-        doc_id: str,
-        user_id: Optional[int],
-        title: str,
-        url: Optional[str],
-        scope: str,
-        tags: List[str],
-        chunks: List[str],
-        embeddings: List[List[float]],
+            self,
+            doc_id: str,
+            user_id: Optional[int],
+            title: str,
+            url: Optional[str],
+            scope: str,
+            tags: List[str],
+            chunks: List[str],
+            embeddings: List[List[float]],
     ) -> None:
         if len(chunks) != len(embeddings):
             raise ValueError("chunks 和 embeddings 长度必须一致")
@@ -111,7 +111,7 @@ class MilvusVectorStore(IStore):
         expr = f'doc_id == "{doc_id}"'
         self._col.delete(expr)
 
-    def search( self, query_embedding: List[float], top_k: int) -> List[VectorSearchResult]:
+    def search(self, query_embedding: List[float], top_k: int) -> List[VectorSearchResult]:
         if self._col.num_entities == 0:
             return []
 

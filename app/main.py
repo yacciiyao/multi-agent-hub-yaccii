@@ -14,7 +14,7 @@ from starlette.staticfiles import StaticFiles
 from app.routers import bot_router, session_router, message_router, rag_router, agent_router, file_router
 from infrastructure.config_manager import config
 from infrastructure.mlogger import mlogger
-from infrastructure.storage_manager import storage_manager
+from infrastructure.data_storage_manager import storage_manager
 from infrastructure.vector_store_manager import get_vector_store
 
 

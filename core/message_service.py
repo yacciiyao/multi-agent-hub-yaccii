@@ -15,6 +15,7 @@ from domain.enums import Role
 from domain.message import Message, RagSource
 from infrastructure.agent_registry import get_agent, get_default_agent
 from infrastructure.config_manager import config
+from infrastructure.data_storage_manager import storage_manager
 
 
 class MessageService:
@@ -26,7 +27,6 @@ class MessageService:
     @property
     def storage(self):
         if not self._storage:
-            from infrastructure.storage_manager import storage_manager
             self._storage = storage_manager.get()
         return self._storage
 
@@ -46,10 +46,7 @@ class MessageService:
         if not bot:
             raise ValueError("Bot not found.")
 
-        allow_image = bool(getattr(bot, "allow_image", False))
-        if message.attachments and not allow_image:
-            raise ValueError("当前模型不支持图片对话，请切换到支持图片的模型。")
-
+        # 选择 Agent
         try:
             agent_key = getattr(session, "agent_key", None)
             agent = get_agent(agent_key) if agent_key else None
@@ -58,15 +55,18 @@ class MessageService:
         if not agent:
             agent = get_default_agent()
 
+        # 消息数量限制
         history = await self.storage.get_messages(user_id=user_id, session_id=session_id)
         limit = int(self._config.get("max_messages_count", 200))
         if len(history) >= limit:
             raise RuntimeError("Message limit exceeded.")
 
+        # 单条消息长度限制
         max_len = int(self._config.get("max_messages_length", 8000))
         if len(message.content or "") > max_len:
             message.content = (message.content or "")[:max_len]
 
+        # 更新会话标记
         await self.storage.update_session_flag(
             user_id=user_id,
             session_id=session_id,
@@ -77,8 +77,10 @@ class MessageService:
         setattr(message, "stream_enabled", bool(stream))
         await self.storage.append_message(message=message)
 
+        # 重新读取历史（包含刚追加的消息）
         history = await self.storage.get_messages(user_id=user_id, session_id=session_id)
 
+        # 组装历史对话上下文
         history_context: List[Dict[str, str]] = []
         for h in history:
             if h.role in (Role.USER, Role.ASSISTANT):
@@ -88,6 +90,7 @@ class MessageService:
                     "content": str(h.content or "")
                 })
 
+        # 上下文初始化：Agent 的 system_prompt
         context: List[Dict[str, str]] = []
         if getattr(agent, "system_prompt", None):
             context.append({
@@ -95,6 +98,7 @@ class MessageService:
                 "content": agent.system_prompt,
             })
 
+        # 顶层 RAG
         sources: List[RagSource] = []
         if message.rag_enabled:
             rag_reply = await self._rag.semantic_search(
@@ -124,19 +128,15 @@ class MessageService:
                         meta=meta_str,
                     ))
 
+        # 拼上历史对话
         context.extend(history_context)
 
+        # ---------- 流式 ----------
         if stream:
             async def generator() -> AsyncIterator[str]:
                 buffer: List[str] = []
 
-                attachments = getattr(message, "attachments", None) or []
-                use_vision = bool(attachments) and allow_image and hasattr(bot, "chat_with_attachments")
-                if use_vision:
-                    # 支持图片的 Bot：优先走多模态接口
-                    streamer = await bot.chat_with_attachments(messages=context, attachments=attachments, stream=True)
-                else:
-                    streamer = await bot.chat(context, stream=True)
+                streamer = await bot.chat(context, stream=True)
 
                 async for chunk in streamer:
                     s = str(chunk or "")
@@ -147,6 +147,7 @@ class MessageService:
 
                 full = "".join(buffer)
 
+                # 将 RAG 来源通过特殊标记附带在流末尾
                 if sources:
                     meta = {
                         "type": "rag_sources",
@@ -157,6 +158,7 @@ class MessageService:
                     }
                     yield "\n[[RAG_SOURCES]]" + json.dumps(meta, ensure_ascii=False) + "\n"
 
+                # 写入助手消息
                 await self.storage.append_message(Message(
                     session_id=session_id,
                     role=Role.ASSISTANT,
@@ -168,6 +170,7 @@ class MessageService:
                     stream_enabled=True,  # type: ignore
                 ))
 
+                # 自动生成会话标题
                 if not session.session_name:
                     try:
                         s_title_ctx = [
@@ -187,7 +190,7 @@ class MessageService:
                         s_title_raw = (s_title_raw or "").strip()
                         import re
                         s_titles = re.sub(
-                            r"[\"'‘’“”.,，。!！?？:：;；()\[\]{}<>《》【】·\-_/\\@#~`^&*+=|]",
+                            r"[\"'‘’“”.,，。!！?？:：;；()\[\]{}<>《》【】·\\-_/\\@#~`^&*+=|]",
                             " ",
                             s_title_raw
                         )
@@ -204,9 +207,6 @@ class MessageService:
             return generator()
 
         # ---------- 非流式 ----------
-        # reply = await bot.chat(context, stream=False)
-        # reply_text = str(reply or "").strip()
-
         runtime = AgentRuntime(
             agent_config=agent,
             bot=bot,
@@ -224,19 +224,22 @@ class MessageService:
             stream=False,
         )
 
+        # 优先使用 AgentRuntime 返回的 final_sources，如果为空则退回顶层 sources
+        assistant_sources: List[RagSource] = final_sources or sources
+
         # 写入助手消息
         await self.storage.append_message(Message(
             session_id=session_id,
             role=Role.ASSISTANT,
             content=reply_text,
             rag_enabled=bool(message.rag_enabled),
-            sources=sources,
+            sources=assistant_sources,
             created_at=int(time.time()),
             is_deleted=False,
             stream_enabled=False,  # type: ignore
         ))
 
-        # 首次自动生成会话标题
+        # 自动生成会话标题
         if not session.session_name:
             try:
                 c_title_ctx = [
@@ -256,7 +259,7 @@ class MessageService:
                 c_title_raw = (c_title_raw or "").strip()
                 import re
                 c_titles = re.sub(
-                    r"[\"'‘’“”.,，。!！?？:：;；()\[\]{}<>《》【】·\-_/\\@#~`^&*+=|]",
+                    r"[\"'‘’“”.,，。!！?？:：;；()\[\]{}<>《》【】·\\-_/\\@#~`^&*+=|]",
                     " ",
                     c_title_raw
                 )
@@ -274,8 +277,8 @@ class MessageService:
             "reply": reply_text,
             "sources": [
                 (s.model_dump() if hasattr(s, "model_dump") else dict(s))
-                for s in sources
-            ] if (message.rag_enabled and sources) else [],
+                for s in assistant_sources
+            ] if (message.rag_enabled and assistant_sources) else [],
         }
 
     async def get_messages(self, user_id: int, session_id: str) -> List[Dict[str, Any]]:

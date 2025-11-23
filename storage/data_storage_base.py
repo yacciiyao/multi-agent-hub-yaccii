@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @File: storage_base.py
+# @File: data_storage_base.py
 # @Author: yaccii
 # @Time: 2025-11-07 11:40
 # @Description:
@@ -10,7 +10,7 @@ from domain.message import Message
 from domain.session import Session
 
 
-class IStorage(ABC):
+class DStorage(ABC):
 
     # ------------- session -------------
     @abstractmethod

@@ -22,7 +22,7 @@ class SessionService:
     @property
     def storage(self):
         if not self._storage:
-            from infrastructure.storage_manager import storage_manager
+            from infrastructure.data_storage_manager import storage_manager
             self._storage = storage_manager.get()
         return self._storage
 

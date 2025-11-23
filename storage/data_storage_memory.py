@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @File: storage_memory.py
+# @File: data_storage_memory.py
 # @Author: yaccii
 # @Time: 2025-11-07 12:39
 # @Description: 基于内存的数据存储实现，适用于本地开发与单元测试场景。不提供持久化能力，进程结束后数据即丢失。
@@ -10,24 +10,17 @@ from typing import List, Optional, Dict, Any
 from domain.message import Message
 from domain.rag import RagChunk, RagDocument
 from domain.session import Session
-from storage.storage_base import IStorage
+from storage.data_storage_base import DStorage
 
 
-class MemoryStorage(IStorage):
+class MemoryStorage(DStorage):
     def __init__(self):
         self._lock = asyncio.Lock()
 
-        # sessions: user_id -> {session_id: Session}
         self._sessions: Dict[int, Dict[str, Session]] = {}
-        # messages: session_id -> [Message]
         self._messages: Dict[str, List[Message]] = {}
-
-        # RAG documents
-        # docs: doc_id -> RagDocument
         self._docs: Dict[str, RagDocument] = {}
-        # docs_by_user: user_id -> [doc_id]
         self._docs_by_user: Dict[int, List[str]] = {}
-        # chunks_by_doc: doc_id -> [RagChunk]
         self._chunks_by_doc: Dict[str, List[RagChunk]] = {}
 
     # ------------- session -------------

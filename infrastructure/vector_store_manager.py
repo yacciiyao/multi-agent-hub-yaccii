@@ -8,12 +8,12 @@ from __future__ import annotations
 from typing import Optional
 
 from infrastructure.config_manager import config
-from storage.vector_store_base import IStore
+from storage.vector_store_base import VStore
 from storage.vector_store_faiss import FaissVectorStore
 from storage.vector_store_milvus import MilvusVectorStore
 
 # 全局单例
-_vector_store: Optional[IStore] = None
+_vector_store: Optional[VStore] = None
 _backend_type: Optional[str] = None
 
 
@@ -78,7 +78,7 @@ def _init_vector_store() -> None:
         return
 
 
-def get_vector_store() -> Optional[IStore]:
+def get_vector_store() -> Optional[VStore]:
     """
     对外唯一入口：拿到底层向量库实例（Faiss 或 Milvus）。
 

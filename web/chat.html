@@ -1,6 +1,49 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <style>
+        .chat-markdown pre code {
+            white-space: pre;
+            word-wrap: normal;
+        }
+
+        .chat-markdown table {
+            border-collapse: collapse;
+        }
+
+        .chat-markdown table th, .chat-markdown table td {
+            border: 1px solid #e5e7eb;
+            padding: 6px 10px;
+        }
+
+        .chat-markdown blockquote {
+            border-left: 4px solid #e5e7eb;
+            margin: 8px 0;
+            padding: 4px 10px;
+            color: #6b7280;
+        }
+
+        .chat-attachments img {
+            max-width: 100%;
+            border-radius: 6px;
+        }
+
+        .rag-sources {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .rag-sources a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/common.min.js"></script>
+
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
     <title>Multi-Agent Hub</title>
@@ -15,6 +58,11 @@
             --green: #10b981;
             --green-50: #ecfdf5;
             --green-100: #d1fae5;
+            --btn-h: 40px;
+            --shell-pad: 12px;
+            --textbox-min-h: 92px;
+            --textbox-max-h: 220px;
+            --actions-gap: 8px;
         }
 
         * {
@@ -85,12 +133,18 @@
         }
 
         .btn {
-            padding: 8px 12px;
+            padding: 0 12px;
             border: 1px solid var(--border);
             background: #fff;
             color: var(--text);
             border-radius: 8px;
-            cursor: pointer
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: var(--btn-h);
+            font-weight: 600;
         }
 
         .btn:hover {
@@ -300,11 +354,6 @@
             text-overflow: ellipsis;
         }
 
-        .user-sub {
-            font-size: 11px;
-            color: var(--muted);
-        }
-
         .toolbar {
             display: flex;
             align-items: center;
@@ -397,7 +446,7 @@
             border-radius: 10px;
             padding: 10px 12px;
             word-break: break-word;
-            white-space: pre-wrap;
+            white-space: normal;
             box-shadow: 0 1px 0 rgba(0, 0, 0, .02)
         }
 
@@ -507,7 +556,6 @@
         }
 
         .composer {
-            position: relative;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -516,113 +564,127 @@
             flex-shrink: 0;
         }
 
-        .composer textarea {
-            flex: 1;
-            min-height: 92px;
-            resize: vertical;
+        .input-shell {
+            position: relative;
+            background: #fff;
+            border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 12px 56px 12px 12px;
+            padding: var(--shell-pad);
+            padding-bottom: calc(var(--shell-pad) + var(--btn-h) + var(--actions-gap));
+        }
+
+        .textbox {
             outline: none;
-            background: #fff;
-        }
-
-        .composer textarea:focus {
-            border-color: #86efac;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, .15)
-        }
-
-        #send {
-            position: absolute;
-            right: 12px;
-            bottom: 24px;
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            border: none;
-            cursor: pointer;
-            background: var(--green);
-            color: #fff;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 6px 14px rgba(16, 185, 129, .25);
-            transition: transform .12s, filter .12s, box-shadow .12s
-        }
-
-        #send:hover {
-            filter: brightness(.98);
-            box-shadow: 0 8px 18px rgba(16, 185, 129, .3)
-        }
-
-        #send:active {
-            transform: translateY(1px)
-        }
-
-        #send svg {
-            width: 18px;
-            height: 18px
-        }
-
-        .sources {
-            margin-top: 8px;
-            padding: 0
-        }
-
-        .sources-hd {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: #fff;
-            cursor: pointer;
-            user-select: none
-        }
-
-        .sources-toggle {
-            border: none;
-            background: transparent;
-            color: #047857;
-            font-size: 13px;
+            min-height: var(--textbox-min-h);
+            max-height: var(--textbox-max-h);
+            overflow-y: auto;
             padding: 0;
-            cursor: pointer
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
-        .sources-count {
+        .textbox:empty:before {
+            content: attr(data-placeholder);
             color: var(--muted);
-            font-size: 12px
         }
 
-        .sources-body {
-            margin-top: 8px;
-            padding: 8px;
-            background: #f8fafc;
+        .inbox-actions {
+            position: absolute;
+            left: var(--shell-pad);
+            right: var(--shell-pad);
+            bottom: var(--shell-pad);
+            height: var(--btn-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .inbox-actions .left, .inbox-actions .right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .image-preview {
+            display: none;
+            margin-bottom: 4px;
+            padding: 6px 0;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .image-preview-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
             border: 1px solid var(--border);
-            border-radius: 8px
+            background: #f9fafb;
+            flex-shrink: 0;
         }
 
-        .sources .source-item + .source-item {
-            margin-top: 6px
+        .image-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-preview-remove {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            border: none;
+            background: rgba(0, 0, 0, .6);
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .message-images {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .message-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--border);
         }
 
         .chat-messages::-webkit-scrollbar,
         .session-list::-webkit-scrollbar,
-        .agent-items::-webkit-scrollbar {
+        .agent-items::-webkit-scrollbar,
+        .textbox::-webkit-scrollbar {
             width: 8px;
             height: 8px
         }
 
         .chat-messages::-webkit-scrollbar-thumb,
         .session-list::-webkit-scrollbar-thumb,
-        .agent-items::-webkit-scrollbar-thumb {
+        .agent-items::-webkit-scrollbar-thumb,
+        .textbox::-webkit-scrollbar-thumb {
             background: #e5e7eb;
             border-radius: 8px
         }
 
         .chat-messages::-webkit-scrollbar-thumb:hover,
         .session-list::-webkit-scrollbar-thumb:hover,
-        .agent-items::-webkit-scrollbar-thumb:hover {
+        .agent-items::-webkit-scrollbar-thumb:hover,
+        .textbox::-webkit-scrollbar-thumb:hover {
             background: #d1d5db
         }
 
@@ -663,42 +725,6 @@
             justify-content: flex-end;
             border-top: 1px solid var(--border)
         }
-
-        /* 上传按钮样式 */
-        .upload-btn {
-            position: absolute;
-            left: 12px;
-            top: 70%;
-            transform: translateY(-50%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        .upload-btn svg {
-            width: 30px;
-            height: 30px;
-        }
-
-        /* 上传按钮 hover 和 active 状态 */
-        .upload-btn:hover {
-            background: var(--green);
-        }
-
-        .upload-btn:active {
-            transform: translateY(-50%) scale(0.9);
-        }
-
-        /* 隐藏的文件输入框 */
-        .file-input {
-            display: none;
-        }
-
-
     </style>
 </head>
 <body>
@@ -713,7 +739,6 @@
         </div>
     </div>
 </div>
-
 
 <div id="imageViewerMask" class="modal-mask">
     <div class="image-viewer">
@@ -750,7 +775,7 @@
 
             <div class="user-panel">
                 <div class="user-avatar">
-                    <img src="/static/images/user.jpg" alt="User"/>
+                    <img src="/static/static/images/user_avatar.jpg" alt="User"/>
                 </div>
                 <div class="user-info">
                     <div class="user-name">Demo User</div>
@@ -777,30 +802,55 @@
 
         <div class="bottom-panel">
             <div id="shortcut-bar" class="shortcut-bar"></div>
+
             <div class="composer">
-                <label for="file-upload" class="upload-btn">
-                    <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" fill="none">
-                        <path d="M512 170.666667a42.666667 42.666667 0 0 1 42.666667 42.666666v256h256a42.666667 42.666667 0 0 1 0 85.333334h-256v256a42.666667 42.666667 0 0 1-85.333334 0v-256H213.333333a42.666667 42.666667 0 0 1 0-85.333334h256V213.333333a42.666667 42.666667 0 0 1 42.666667-42.666666z"
-                              fill="#666666"/>
-                    </svg>
-                </label>
-                <label for="input"></label><textarea id="input" maxlength="500"
-                                                     placeholder="输入消息, Shift+Enter 换行, Enter 发送"></textarea>
+                <div id="image-preview" class="image-preview"></div>
 
-                <button id="send" aria-label="发送">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M3.5 11.5L20 4l-7.5 16-2-7-7-1.5Z" stroke="white" stroke-width="1.8"
-                              stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                <input type="file" id="file-upload" class="file-input" accept="image/*"/>
+                <div class="input-shell">
+                    <div id="input"
+                         class="textbox"
+                         contenteditable="true"
+                         data-placeholder="输入消息，Shift+Enter 换行，Enter 发送"></div>
 
+                    <div class="inbox-actions">
+                        <div class="left">
+                            <label class="btn" for="file-upload">＋</label>
+                            <input type="file" id="file-upload" class="file-input" accept="image/*"/>
+                        </div>
+                        <div class="right">
+                            <button id="send" class="btn btn-green" type="button">发送</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 </div>
 
 <script>
+    /** --------------- Markdown 渲染配置 --------------- */
+    marked.setOptions({
+        gfm: true,
+        breaks: true,
+        headerIds: true,
+        mangle: false,
+        highlight: (code, lang) => {
+            try {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, {language: lang}).value;
+                }
+                return hljs.highlightAuto(code).value;
+            } catch {
+                return code;
+            }
+        }
+    });
+
+    function renderMarkdown(md) {
+        const html = marked.parse(md || '');
+        return DOMPurify.sanitize(html);
+    }
+
     /** --------------- 配置与状态 --------------- */
     const API = location.origin;
     const USER_ID = 1;
@@ -819,6 +869,8 @@
     let currentAgentKey = null;
     let shortcutsHidden = false;
 
+    let pendingAttachments = [];
+
     /** --------------- 工具函数 --------------- */
     const $ = s => document.querySelector(s);
     const ce = (t, c) => {
@@ -826,6 +878,18 @@
         if (c) el.className = c;
         return el;
     };
+
+    function getInputText() {
+        const el = $("#input");
+        if (!el) return "";
+        // 将 &nbsp; 转为空格，保持换行
+        return (el.innerText || "").replace(/\u00A0/g, ' ').trim();
+    }
+
+    function clearInput() {
+        const el = $("#input");
+        if (el) el.innerHTML = "";
+    }
 
     function setStatus(t) {
         $("#status").textContent = t;
@@ -884,28 +948,75 @@
         const desc = agentObj?.description || "";
 
         if (span) {
-            span.innerHTML = agentObj
-                ? `当前助手：<strong>${name}</strong>`
-                : "";
+            span.innerHTML = agentObj ? `当前助手：<strong>${name}</strong>` : "";
         }
-
         if (header) {
             header.innerHTML = "";
             const title = ce("div", "agent-title");
             title.textContent = name;
             header.appendChild(title);
+            if (desc) {
+                const sub = ce("div", "agent-sub");
+                sub.textContent = desc;
+                header.appendChild(sub);
+            }
         }
     }
 
-    /** --------------- DOM 生成 --------------- */
-    function msgBubble(role, text) {
+    function currentModelSupportsImage() {
+        if (!currentBotName) return false;
+        const m = models.find(m => m.bot_name === currentBotName);
+        return !!(m && m.allow_image);
+    }
+
+    function currentAgentSupportsImage() {
+        if (!currentAgentKey) return true;
+        const a = agentsMap[currentAgentKey];
+        if (!a) return true;
+        if (typeof a.allow_image !== "undefined") {
+            return !!a.allow_image;
+        }
+        return true;
+    }
+
+    function updateUploadButtonVisibility() {
+        const btnLabel = document.querySelector('label[for="file-upload"]');
+        const fi = document.getElementById("file-upload");
+        const visible = currentModelSupportsImage() && currentAgentSupportsImage();
+        if (btnLabel) btnLabel.style.display = visible ? "inline-flex" : "none";
+        if (fi) fi.disabled = !visible;
+        if (!visible) {
+            pendingAttachments = [];
+            renderImagePreview();
+        }
+    }
+
+    /** --------------- DOM 生成（Markdown 渲染） --------------- */
+    function msgBubble(role, text, attachments) {
         const wrap = ce("div", "msg " + role);
         const bubble = ce("div", "bubble");
-        bubble.textContent = stripRagBlock(text || "");
+
+        const mdEl = ce("div", "chat-markdown");
+        mdEl.innerHTML = renderMarkdown(stripRagBlock(text || ""));
+        bubble.appendChild(mdEl);
+
+        const imgs = (attachments || []).filter(a => a && a.type === "image");
+        if (imgs.length) {
+            const imgBox = ce("div", "message-images");
+            imgs.forEach(att => {
+                const img = document.createElement("img");
+                img.src = att.url;
+                img.alt = att.file_name || "image";
+                img.className = "message-image";
+                imgBox.appendChild(img);
+            });
+            bubble.appendChild(imgBox);
+        }
+
         if (role === "assistant") {
             const av = ce("div", "avatar");
             const img = document.createElement("img");
-            img.src = "/static/images/ai_avatar.jpg";
+            img.src = "/static/static/images/ai_avatar.jpg";
             img.alt = "AI";
             av.appendChild(img);
             wrap.appendChild(av);
@@ -914,7 +1025,7 @@
             wrap.appendChild(bubble);
             const av = ce("div", "avatar");
             const img = document.createElement("img");
-            img.src = "/static/images/user_avatar.jpg";
+            img.src = "/static/static/images/user_avatar.jpg";
             img.alt = "User";
             av.appendChild(img);
             wrap.appendChild(av);
@@ -988,6 +1099,37 @@
         container.appendChild(box);
     }
 
+    /** --------------- 图片预览渲染 --------------- */
+    function renderImagePreview() {
+        const box = document.getElementById("image-preview");
+        if (!box) return;
+        box.innerHTML = "";
+        if (!pendingAttachments.length) {
+            box.style.display = "none";
+            return;
+        }
+        box.style.display = "flex";
+        pendingAttachments.forEach((att, idx) => {
+            if (!att || att.type !== "image") return;
+            const item = ce("div", "image-preview-item");
+            const img = document.createElement("img");
+            img.src = att.url;
+            img.alt = att.file_name || "image";
+            item.appendChild(img);
+
+            const btn = ce("button", "image-preview-remove");
+            btn.type = "button";
+            btn.textContent = "×";
+            btn.onclick = () => {
+                pendingAttachments.splice(idx, 1);
+                renderImagePreview();
+            };
+            item.appendChild(btn);
+
+            box.appendChild(item);
+        });
+    }
+
     /** --------------- API --------------- */
     async function apiGetModels() {
         const r = await fetch(`${API}/bots`);
@@ -1011,12 +1153,7 @@
     }
 
     async function apiCreateSession(bot_name) {
-        const body = {
-            user_id: USER_ID,
-            bot_name,
-            channel: CHANNEL,
-            agent_key: currentAgentKey || null
-        };
+        const body = {user_id: USER_ID, bot_name, channel: CHANNEL, agent_key: currentAgentKey || null};
         const r = await fetch(`${API}/sessions/create`, {
             method: "POST", headers: {"Content-Type": "application/json"},
             body: JSON.stringify(body)
@@ -1063,26 +1200,30 @@
         }
     }
 
-    async function apiSendMessageJSON(session_id, role, content, rag_enabled) {
+    async function apiSendMessageJSON(session_id, role, content, rag_enabled, attachments) {
+        const payload = {
+            user_id: USER_ID, session_id, content, role, stream: false, rag_enabled, channel: CHANNEL
+        };
+        if (attachments && attachments.length) payload.attachments = attachments;
         const r = await fetch(`${API}/messages/chat`, {
             method: "POST", headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                user_id: USER_ID, session_id, content, role, stream: false,
-                rag_enabled, channel: CHANNEL
-            })
+            body: JSON.stringify(payload)
         });
         const j = await r.json();
         if (j.code !== 0) throw new Error(j.message || "send failed");
-        return {reply: (j.data?.reply || ""), sources: (j.data?.sources || [])};
+        return {
+            reply: (j.data?.reply || ""),
+            sources: (j.data?.sources || []),
+            attachments: (j.data?.attachments || [])
+        };
     }
 
-    async function apiSendMessageStream(session_id, role, content, rag_enabled, onChunk) {
+    async function apiSendMessageStream(session_id, role, content, rag_enabled, attachments, onChunk) {
+        const payload = {user_id: USER_ID, session_id, content, role, stream: true, rag_enabled, channel: CHANNEL};
+        if (attachments && attachments.length) payload.attachments = attachments;
         const r = await fetch(`${API}/messages/chat`, {
             method: "POST", headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                user_id: USER_ID, session_id, content, role, stream: true,
-                rag_enabled, channel: CHANNEL
-            })
+            body: JSON.stringify(payload)
         });
         if (!r.ok) {
             let m = "stream http error";
@@ -1104,69 +1245,67 @@
         streamingReader = null;
     }
 
+    async function uploadImageFile(file) {
+        const sessionId = await ensureSessionIfNeeded();
+        const form = new FormData();
+        form.append("user_id", USER_ID);
+        form.append("session_id", sessionId);
+        form.append("file", file);
+        const r = await fetch(`${API}/files/upload`, {method: "POST", body: form});
+        const j = await r.json();
+        if (!j.success) {
+            throw new Error(j.detail || "upload failed");
+        }
+        return j.data.attachment;
+    }
+
     /** --------------- Agent 快捷键渲染 --------------- */
-
     function handleShortcutClick(shortcut) {
-        const ta = $("#input");
-        if (!ta) return;
-
+        const el = $("#input");
+        if (!el) return;
         const tpl = (shortcut.prompt_template && String(shortcut.prompt_template).trim())
             ? String(shortcut.prompt_template).trim()
             : (shortcut.title || "");
-
         if (!tpl) return;
-
-        ta.value = tpl;
-
+        el.textContent = tpl;
         shortcutsHidden = true;
         const bar = $("#shortcut-bar");
-        if (bar) {
-            bar.style.display = "none";
-        }
+        if (bar) bar.style.display = "none";
     }
 
     function renderShortcutsForAgent(agentKey) {
         const bar = $("#shortcut-bar");
         if (!bar) return;
-
         bar.innerHTML = "";
-
         if (!agentKey || shortcutsHidden) {
             bar.style.display = "none";
             return;
         }
-
         const agent = agentsMap[agentKey];
         const list = agent && Array.isArray(agent.task_shortcuts) ? agent.task_shortcuts : [];
         if (!list.length) {
             bar.style.display = "none";
             return;
         }
-
         bar.style.display = "flex";
-
         list.forEach(sc => {
             const pill = ce("button", "shortcut-pill");
             pill.type = "button";
             pill.dataset.id = sc.id || "";
-
             const t = ce("div", "shortcut-pill-title");
             t.textContent = sc.title || "";
             pill.appendChild(t);
-
             if (sc.subtitle) {
                 const sub = ce("div", "shortcut-pill-sub");
                 sub.textContent = sc.subtitle;
                 pill.appendChild(sub);
             }
-
             pill.onclick = () => handleShortcutClick(sc);
             bar.appendChild(pill);
         });
     }
 
     /** --------------- Agent 渲染与切换 --------------- */
-
     function renderAgents() {
         const box = $("#agent-list");
         box.innerHTML = "";
@@ -1178,47 +1317,36 @@
             box.appendChild(text);
             return;
         }
-
         agents.forEach(a => {
             const item = ce("div", "agent-item");
             item.dataset.key = a.key;
-
             const name = ce("span", "agent-name");
             name.textContent = a.name || a.key;
-
             const desc = ce("span", "agent-desc");
             desc.textContent = a.description || "";
-
             item.appendChild(name);
             item.appendChild(desc);
-
-            if (a.key === currentAgentKey) {
-                item.classList.add("active");
-            }
-
+            if (a.key === currentAgentKey) item.classList.add("active");
             item.onclick = async () => {
-                if (a.key === currentAgentKey && !pendingNew) {
-                    return;
-                }
-
+                if (a.key === currentAgentKey && !pendingNew) return;
                 const needConfirm = hasUserOrAssistant() && !pendingNew;
                 if (needConfirm) {
                     const ok = await uiConfirm("切换助手将新建一个会话, 是否继续?");
                     if (!ok) return;
                 }
-
                 currentAgentKey = a.key;
                 pendingNew = true;
                 currentSessionId = null;
                 shortcutsHidden = false;
-
+                pendingAttachments = [];
+                renderImagePreview();
                 $("#chat-messages").innerHTML = "";
                 renderAgentsActive();
                 updateAgentCurrentLabel();
                 renderShortcutsForAgent(currentAgentKey);
                 renderSessionsActive();
+                updateUploadButtonVisibility();
             };
-
             box.appendChild(item);
         });
     }
@@ -1226,18 +1354,13 @@
     function renderAgentsActive() {
         document.querySelectorAll(".agent-item").forEach(el => {
             const key = el.dataset.key;
-            if (key === currentAgentKey) {
-                el.classList.add("active");
-            } else {
-                el.classList.remove("active");
-            }
+            if (key === currentAgentKey) el.classList.add("active"); else el.classList.remove("active");
         });
     }
 
     /** --------------- 会话列表 --------------- */
     async function reloadSessions() {
         sessions = await apiListSessions();
-
         const getTs = (s) => {
             const v = s.updated_at ?? s.created_at ?? s.update_time ?? s.create_time ?? 0;
             if (typeof v === "number") return v;
@@ -1282,6 +1405,8 @@
                 if (currentSessionId === s.session_id) {
                     currentSessionId = null;
                     $("#chat-messages").innerHTML = "";
+                    pendingAttachments = [];
+                    renderImagePreview();
                 }
                 await reloadSessions();
             };
@@ -1295,26 +1420,23 @@
                 pendingNew = false;
                 currentSessionId = s.session_id;
                 currentBotName = s.bot_name;
-
                 const sel = document.getElementById("model-select");
                 if (sel && s.bot_name) sel.value = s.bot_name;
-
                 document.getElementById("ck-rag").checked = !!s.rag_enabled;
                 document.getElementById("ck-stream").checked = !!s.stream_enabled;
-
                 if (s.agent_key) {
                     currentAgentKey = s.agent_key;
                     renderAgentsActive();
                     updateAgentCurrentLabel();
                 }
-
                 document.getElementById("chat-messages").innerHTML = "";
+                pendingAttachments = [];
+                renderImagePreview();
                 await loadHistory(currentSessionId);
-
                 shortcutsHidden = hasUserOrAssistant();
                 renderShortcutsForAgent(currentAgentKey);
-
                 renderSessionsActive();
+                updateUploadButtonVisibility();
             };
 
             box.appendChild(item);
@@ -1342,10 +1464,11 @@
         const hist = await apiHistory(sessionId);
         (hist || []).forEach(m => {
             const role = (typeof m.role === "string") ? m.role.toLowerCase() : "system";
+            const attachments = Array.isArray(m.attachments) ? m.attachments : [];
             if (role === "system") {
-                panel.appendChild(msgBubble("system", m.content || ""));
+                panel.appendChild(msgBubble("system", m.content || "", []));
             } else {
-                const row = msgBubble(role, m.content || "");
+                const row = msgBubble(role, m.content || "", attachments);
                 panel.appendChild(row);
                 if (role === "assistant" && m.sources && m.sources.length) {
                     const bubble = row.querySelector(".bubble");
@@ -1353,6 +1476,7 @@
                 }
             }
         });
+        hljs.highlightAll();
         scrollBottom();
         setStatus("就绪");
     }
@@ -1365,7 +1489,7 @@
             const opt = ce("option");
             opt.value = m.bot_name;
             opt.textContent = `${m.bot_name}（${m.family}）`;
-            opt.allow_image = m.allow_image;
+            opt.dataset.allowImage = m.allow_image ? "1" : "0";
             sel.appendChild(opt);
         });
         if (!currentBotName && models[0]) currentBotName = models[0].bot_name;
@@ -1385,16 +1509,21 @@
             currentSessionId = null;
             currentBotName = newModel;
             $("#chat-messages").innerHTML = "";
+            pendingAttachments = [];
+            renderImagePreview();
             shortcutsHidden = false;
             renderShortcutsForAgent(currentAgentKey);
             insertSystemTip(`切换模型 ${newModel}, 已创建本地新会话`);
             renderSessionsActive();
+            updateUploadButtonVisibility();
         };
+        updateUploadButtonVisibility();
     }
 
     /** --------------- 系统提示（仅UI，不持久化） --------------- */
     async function insertSystemTip(text) {
-        $("#chat-messages").appendChild(msgBubble("system", text));
+        $("#chat-messages").appendChild(msgBubble("system", text, []));
+        hljs.highlightAll();
         scrollBottom();
     }
 
@@ -1406,46 +1535,53 @@
         pendingNew = false;
         currentSessionId = sid;
         currentBotName = model;
-
         const sel = document.getElementById("model-select");
         if (sel && model) sel.value = model;
-
         await reloadSessions();
+        updateUploadButtonVisibility();
         return sid;
     }
 
     async function send() {
-        const ta = $("#input");
-        const text = (ta.value || "").trim();
-        if (!text) return;
+        const text = getInputText();
+        if (!text && (!pendingAttachments || !pendingAttachments.length)) return;
 
         const sessionId = await ensureSessionIfNeeded();
 
-        const userRow = msgBubble("user", text);
+        const userRow = msgBubble("user", text, pendingAttachments);
         $("#chat-messages").appendChild(userRow);
         scrollBottom();
-        ta.value = "";
+        clearInput();
 
-        const botRow = msgBubble("assistant", "");
+        const botRow = msgBubble("assistant", "", []);
         const bubble = botRow.querySelector(".bubble");
+        const mdDiv = bubble.querySelector(".chat-markdown") || (() => {
+            const d = ce("div", "chat-markdown");
+            bubble.appendChild(d);
+            return d;
+        })();
         $("#chat-messages").appendChild(botRow);
         scrollBottom();
 
         const useStream = $("#ck-stream").checked;
         const useRag = $("#ck-rag").checked;
 
+        const attachmentsToSend = pendingAttachments.slice();
+        pendingAttachments = [];
+        renderImagePreview();
+
         setStatus(useStream ? "流式生成中…" : "生成中…");
         try {
             if (useStream) {
                 let full = "";
-                await apiSendMessageStream(sessionId, "user", text, useRag, (chunk) => {
+                await apiSendMessageStream(sessionId, "user", text, useRag, attachmentsToSend, (chunk) => {
                     const marker = "[[RAG_SOURCES]]";
                     if (chunk.includes(marker)) {
                         const idx = chunk.indexOf(marker);
                         const before = chunk.slice(0, idx);
                         if (before) {
                             full += before;
-                            bubble.textContent = full;
+                            mdDiv.innerHTML = renderMarkdown(full);
                             scrollBottom();
                         }
                         const jsonStr = chunk.slice(idx + marker.length).trim();
@@ -1453,79 +1589,90 @@
                             const meta = JSON.parse(jsonStr);
                             const arr = Array.isArray(meta?.sources) ? meta.sources : [];
                             if (arr.length) renderSources(bubble, arr);
-                        } catch (e) {
+                        } catch {
                         }
                         return;
                     }
-
                     full += chunk;
-                    bubble.textContent = full;
+                    mdDiv.innerHTML = renderMarkdown(full);
                     scrollBottom();
                 });
+                hljs.highlightAll();
                 setStatus("就绪");
             } else {
-                const {reply, sources} = await apiSendMessageJSON(sessionId, "user", text, useRag);
-                bubble.textContent = reply || "";
+                const {reply, sources} = await apiSendMessageJSON(sessionId, "user", text, useRag, attachmentsToSend);
+                mdDiv.innerHTML = renderMarkdown(reply || "");
                 if (sources && sources.length) {
                     renderSources(bubble, sources);
                 }
+                hljs.highlightAll();
                 setStatus("就绪");
             }
-            await reloadSessions()
+            await reloadSessions();
         } catch (e) {
-            bubble.textContent = `【错误】${e.message || e}`;
+            mdDiv.innerHTML = renderMarkdown(`**错误**：${e.message || e}`);
             setStatus("出错");
         }
     }
 
-
     /** --------------- 事件绑定 --------------- */
-    $("#send").onclick = send;
-    $("#input").addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            send();
+    document.getElementById("send").onclick = send;
+
+    // contenteditable Enter 行为：Enter 发送；Shift+Enter 换行
+    const inputBox = document.getElementById("input");
+    inputBox.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            if (e.shiftKey) {
+                // 允许换行
+                return;
+            } else {
+                e.preventDefault();
+                send();
+            }
         }
     });
 
-    $("#btn-new").onclick = async () => {
+    document.getElementById("btn-new").onclick = async () => {
         const ok = await uiConfirm("确认新建会话？当前对话会保留在会话列表中。");
         if (!ok) return;
-
         if (streamingReader) {
             try {
                 await streamingReader.cancel();
             } catch (e) {
             }
         }
-
-        const model = $("#model-select").value || models[0]?.bot_name;
+        const model = document.getElementById("model-select").value || models[0]?.bot_name;
         pendingNew = true;
         pendingBotName = model;
         currentSessionId = null;
         currentBotName = model;
-        $("#chat-messages").innerHTML = "";
+        document.getElementById("chat-messages").innerHTML = "";
+        pendingAttachments = [];
+        renderImagePreview();
         shortcutsHidden = false;
         renderShortcutsForAgent(currentAgentKey);
         insertSystemTip(`已创建新会话（模型：${model}）`);
         renderSessionsActive();
+        updateUploadButtonVisibility();
     };
 
-    $("#btn-clear-all").onclick = async () => {
+    document.getElementById("btn-clear-all").onclick = async () => {
         if (!await uiConfirm("确认清空全部会话？")) return;
         await apiDeleteAll();
         sessions = [];
         currentSessionId = null;
         pendingNew = true;
-        pendingBotName = $("#model-select").value || models[0]?.bot_name;
-        $("#session-list").innerHTML = "";
-        $("#chat-messages").innerHTML = "";
+        pendingBotName = document.getElementById("model-select").value || models[0]?.bot_name;
+        document.getElementById("session-list").innerHTML = "";
+        document.getElementById("chat-messages").innerHTML = "";
+        pendingAttachments = [];
+        renderImagePreview();
         shortcutsHidden = false;
         renderShortcutsForAgent(currentAgentKey);
         renderSessionsActive();
     };
 
-    $("#ck-rag").addEventListener('change', async function () {
+    document.getElementById("ck-rag").addEventListener('change', async function () {
         const v = this.checked;
         insertSystemTip(v ? '已开启RAG' : '已关闭RAG');
         if (!pendingNew && currentSessionId) {
@@ -1534,7 +1681,7 @@
         }
     });
 
-    $("#ck-stream").addEventListener('change', async function () {
+    document.getElementById("ck-stream").addEventListener('change', async function () {
         const v = this.checked;
         insertSystemTip(v ? '已开启流式输出' : '已关闭流式输出');
         if (!pendingNew && currentSessionId) {
@@ -1542,6 +1689,32 @@
             apiUpdateFlags(currentSessionId, {rag_enabled: ragNow, stream_enabled: v});
         }
     });
+
+    const fileInput = document.getElementById("file-upload");
+    if (fileInput) {
+        fileInput.addEventListener("change", async (e) => {
+            const files = Array.from(e.target.files || []);
+            if (!files.length) return;
+
+            const remain = 3 - pendingAttachments.length;
+            if (remain <= 0) {
+                fileInput.value = "";
+                return;
+            }
+
+            const toUpload = files.slice(0, remain);
+            for (const f of toUpload) {
+                try {
+                    const att = await uploadImageFile(f);
+                    pendingAttachments.push(att);
+                } catch (err) {
+                    console.error("upload error", err);
+                }
+            }
+            fileInput.value = "";
+            renderImagePreview();
+        });
+    }
 
     /** --------------- 初始化 --------------- */
     (async function init() {
@@ -1570,10 +1743,11 @@
         renderModels();
 
         pendingNew = true;
-        pendingBotName = $("#model-select").value || models[0]?.bot_name || "gpt-3.5-turbo";
+        pendingBotName = document.getElementById("model-select").value || models[0]?.bot_name || "gpt-3.5-turbo";
         insertSystemTip(`已进入新会话（助手：${getAgentNameByKey(currentAgentKey) || "默认"}，模型：${pendingBotName}）`);
 
         await reloadSessions();
+        updateUploadButtonVisibility();
     })();
 </script>
 </body>

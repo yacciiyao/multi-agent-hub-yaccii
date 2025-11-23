@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @File: storage_manager.py
+# @File: data_storage_manager.py
 # @Author: yaccii
 # @Time: 2025-11-07 11:38
 # @Description:
@@ -7,9 +7,9 @@ from typing import Optional
 
 from infrastructure.config_manager import config
 from infrastructure.mlogger import mlogger
-from storage.storage_base import IStorage
-from storage.storage_memory import MemoryStorage
-from storage.storage_mysql import MySQLStorage
+from storage.data_storage_base import DStorage
+from storage.data_storage_memory import MemoryStorage
+from storage.data_storage_mysql import MySQLStorage
 
 
 class StorageManager:
@@ -21,7 +21,7 @@ class StorageManager:
         return cls._instance
 
     def __init__(self):
-        self.backend: Optional[IStorage] = None
+        self.backend: Optional[DStorage] = None
         self.initialized = False
 
     async def init(self):
@@ -30,7 +30,7 @@ class StorageManager:
             return
 
         cfg = config.as_dict()
-        storage_type = cfg.get("storage", "memory").lower()
+        storage_type = cfg.get("data_storage", "memory").lower()
 
         if storage_type == "mysql":
             db_cfg = cfg.get("database", {})
@@ -43,7 +43,7 @@ class StorageManager:
         await self.backend.init()
         self.initialized = True
 
-    def get(self) -> IStorage:
+    def get(self) -> DStorage:
         if not self.backend:
             raise RuntimeError("Storage backend not initialized.")
         return self.backend

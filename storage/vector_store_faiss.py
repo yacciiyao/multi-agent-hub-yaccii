@@ -12,10 +12,10 @@ from typing import Any, Dict, List, Optional
 import faiss
 import numpy as np
 
-from storage.vector_store_base import VectorSearchResult, IStore
+from storage.vector_store_base import VectorSearchResult, VStore
 
 
-class FaissVectorStore(IStore):
+class FaissVectorStore(VStore):
     """
     FAISS 向量库：所有向量存在内存 + embeddings.npy (本地测试用)
     """

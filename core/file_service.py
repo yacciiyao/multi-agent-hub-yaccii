@@ -5,27 +5,41 @@
 # @Description:
 from typing import Optional
 
+import aiohttp
+
 from domain.message import Attachment
-from storage.storage_file import FileStorage, get_file_storage
+from infrastructure.file_storage_manager import get_file_storage
 
 
 class FileService:
-    def __init__(self, storage: Optional[FileStorage] = None) -> None:
-        self._storage = storage or get_file_storage()
+    def __init__(self) -> None:
+        self._storage = get_file_storage()
 
-    def save_image_file(
-        self,
-        user_id: int,
-        session_id: str,
-        file_bytes: bytes,
-        file_name: str,
-        mime_type: Optional[str] = None,
+    async def save_uploaded_file(
+            self,
+            user_id: int,
+            session_id: str,
+            file_bytes: bytes,
+            file_name: str,
+            mime_type: Optional[str] = None,
     ) -> Attachment:
-        if not file_bytes:
-            raise ValueError("文件内容为空")
+        return self._storage.save_file(
+            user_id=user_id,
+            session_id=session_id,
+            file_bytes=file_bytes,
+            file_name=file_name,
+            mime_type=mime_type,
+        )
 
-        if mime_type is not None and not mime_type.startswith("image/"):
-            raise ValueError(f"不支持的文件类型: {mime_type}")
+    async def save_generated_image_from_url(
+            self,
+            user_id: int,
+            session_id: str,
+            image_url: str,
+            file_name: str = "generated_image.png",
+            mime_type: str = "image/png",
+    ) -> Attachment:
+        file_bytes = await self._download_image(image_url)
 
         return self._storage.save_file(
             user_id=user_id,
@@ -34,3 +48,10 @@ class FileService:
             file_name=file_name,
             mime_type=mime_type,
         )
+
+    async def _download_image(self, image_url: str) -> bytes:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as response:
+                if response.status != 200:
+                    raise ValueError(f"Failed to download image from {image_url}, status code {response.status}")
+                return await response.read()

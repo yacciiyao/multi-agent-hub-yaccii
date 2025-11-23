@@ -15,6 +15,7 @@ from domain.enums import Role, Channel, AttachmentType
 from domain.message import Message, Attachment
 from infrastructure.response import failure, success
 
+
 class AttachmentDTO(BaseModel):
     id: str
     type: AttachmentType
@@ -28,19 +29,12 @@ class AttachmentDTO(BaseModel):
         return Attachment(
             id=self.id,
             type=self.type,
-            url=self.url,
+            url="https://images-na.ssl-images-amazon.com/images/I/615KnbjRmTL._AC_UL225_SR225,160_.jpg",
             mime_type=self.mime_type,
             file_name=self.file_name,
             size_bytes=self.size_bytes,
             meta=dict(self.meta or {}),
         )
-
-def get_message_service() -> MessageService:
-    return MessageService()
-
-
-def get_session_service() -> SessionService:
-    return SessionService()
 
 
 class ChatRequest(BaseModel):
@@ -54,12 +48,22 @@ class ChatRequest(BaseModel):
     channel: Channel = Field(default=Channel.WEB, description="渠道")
 
 
+def get_message_service() -> MessageService:
+    return MessageService()
+
+
+def get_session_service() -> SessionService:
+    return SessionService()
+
+
 router = APIRouter(prefix="/messages", tags=["messages"])
 
 
 @router.get("/history", summary="获取消息历史")
-async def history(user_id: int = Query(..., description="用户ID"),
-                  session_id: str = Query(..., description="会话ID")):
+async def history(
+        user_id: int = Query(..., description="用户ID"),
+        session_id: str = Query(..., description="会话ID"),
+):
     svc = get_message_service()
     data = await svc.get_messages(user_id=user_id, session_id=session_id)
     return success(data={"history": data})
@@ -67,8 +71,10 @@ async def history(user_id: int = Query(..., description="用户ID"),
 
 @router.post("/chat", summary="发送消息")
 async def chat(request: ChatRequest):
+    message_svc = get_message_service()
+
     attachments: List[Attachment] = [
-        att.to_domain() for att in (request.attachments or [])
+        dto.to_domain() for dto in (request.attachments or [])
     ]
 
     msg = Message(
@@ -80,7 +86,6 @@ async def chat(request: ChatRequest):
         stream_enabled=bool(request.stream),
     )
 
-    message_svc = get_message_service()
     try:
         if request.stream:
             gen = await message_svc.send_message(
@@ -101,9 +106,11 @@ async def chat(request: ChatRequest):
 
 
 @router.post("/system", summary="系统提示")
-async def system_tip(user_id: int = Query(..., description="用户ID"),
-                     session_id: str = Query(..., description="会话ID"),
-                     rag: Optional[int] = Query(None, description="若提供则同步RAG状态，1启用/0关闭")):
+async def system_tip(
+        user_id: int = Query(..., description="用户ID"),
+        session_id: str = Query(..., description="会话ID"),
+        rag: Optional[int] = Query(None, description="若提供则同步RAG状态，1启用/0关闭"),
+):
     if rag is None:
         return success()
 
